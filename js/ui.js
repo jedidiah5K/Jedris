@@ -7,7 +7,7 @@ const MODE_NAMES = { sprint: '40 Lines', blitz: 'Blitz', zen: 'Zen', versus: 'Lo
 const MODE_SUBS = { sprint: 'CLEAR 40 LINES', blitz: '2 MINUTE SCORE ATTACK', zen: 'ENDLESS', versus: '' };
 const MODE_ACCENTS = { sprint: '#38e8ff', blitz: '#ff9a3c', zen: '#4dff9a', versus: '#ff4fd8' };
 const $ = (id) => document.getElementById(id);
-const screens = ['menu', 'settings', 'help', 'online', 'pause', 'results'];
+const screens = ['menu', 'welcome', 'account', 'settings', 'help', 'online', 'pause', 'results'];
 function showScreen(id) { for (const s of screens) $(s).classList.toggle('hidden', s !== id); }
 
 const App = {
@@ -211,12 +211,14 @@ const App = {
       $('res-title').textContent = MODE_NAMES[this.mode].toUpperCase();
       if (this.mode === 'sprint') {
         if (g.phase === 'done') {
+          Account.submitRecord('sprint', g.time);
           $('res-big').textContent = fmtTime(g.time);
           if (!rec.sprint || g.time < rec.sprint) { rec.sprint = g.time; sub = 'NEW PERSONAL BEST'; }
           else sub = `Best ${fmtTime(rec.sprint)}`;
         } else { $('res-big').textContent = 'TOPPED OUT'; sub = `${g.lines} / ${SPRINT_LINES} lines`; }
       } else if (this.mode === 'blitz') {
         $('res-big').textContent = g.score.toLocaleString();
+        if (g.score > 0) Account.submitRecord('blitz', g.score);
         if (!rec.blitz || g.score > rec.blitz) { rec.blitz = g.score; sub = 'NEW PERSONAL BEST'; }
         else sub = `Best ${rec.blitz.toLocaleString()}`;
       } else {

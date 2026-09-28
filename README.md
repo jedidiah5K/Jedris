@@ -70,11 +70,27 @@ Protocol (JSON over a WebSocket at `<site>/ws`):
 
 | Client → server | Server → client |
 | --- | --- |
-| `hello {name}`, `quick`, `create`, `join {code}`, `cancel` | `welcome`, `queued`, `room {code}`, `error` |
+| `hello {name, token?}`, `quick`, `create`, `join {code}`, `cancel` | `welcome`, `hello {name, guest}`, `queued`, `room {code}`, `error` |
 | `state {s}` (board snapshot), `attack {n}`, `dead {round}` | `match`, `round {seed}`, `opp {s}`, `garbage {n}` |
 | `rematch`, `leave`, `ping` | `roundEnd`, `matchEnd`, `rematchAsk`, `opponentLeft`, `pong` |
 
 `GET /api/health` reports the server version and how many players are connected.
+
+## Accounts
+
+Players can create an account with their DCISM ID (for example `s23105047`), a display name and a password of their own, or play as a guest. Signed-in players appear under their display name in online matches (guests can't borrow a registered name), and their 40 Lines and Blitz personal bests are saved to the account.
+
+Accounts live in `data/accounts.json` on the server (set `JEDRIS_DATA` to move it). Passwords are stored as scrypt hashes and sessions as SHA-256 hashes of random tokens. Nothing checks that a DCISM ID belongs to the person typing it, so the first person to register an ID owns it.
+
+Endpoints: `POST /api/auth/signup`, `/api/auth/login`, `/api/auth/password`, `/api/auth/logout`, `GET /api/auth/me` and `POST /api/records`. See `server/auth.js`.
+
+To reset a forgotten password, stop the server first so it doesn't overwrite the change:
+
+```sh
+npx pm2 stop jedris
+node server/reset-password.js s23105047 newpassword
+npx pm2 start jedris
+```
 
 ## Project layout
 
@@ -88,10 +104,14 @@ js/game.js              Game class: board logic, handling, spins, garbage (one p
 js/input.js             Keyboard → per-player actions
 js/render.js            Canvas renderer, HUD and visual effects
 js/ui.js                App flow, menus, settings and keybind editor
+js/account.js           Sign in, sign up, guest mode and saved personal bests
 js/online.js            Online versus client: lobby, networking, opponent board mirror
 js/main.js              Fixed-timestep main loop
 server/index.js         Node server: static files, /api/health, WebSocket endpoint
 server/hub.js           Matchmaking, rooms, rounds and relays
+server/auth.js          Accounts: sign-up, login, sessions, records
+server/store.js         JSON-file account database (data/accounts.json)
+server/reset-password.js  Command-line password reset
 deploy/                 pm2 start/stop scripts for dcism.org
 ecosystem.config.cjs    pm2 process file
 assets/                 Favicon, app icons and share image
@@ -141,7 +161,7 @@ npx pm2 logs jedris --lines 30   # recent logs
 sh deploy/stop.sh                # stop it
 ```
 
-To update: pull or upload the new files, run `npm ci --omit=dev`, then run `PORT=<port> sh deploy/start.sh` again.
+To update: pull or upload the new files, run `npm ci --omit=dev`, then run `PORT=<port> sh deploy/start.sh` again. Updating never touches `data/`, so accounts are kept. Back up `data/accounts.json` now and then.
 
 pm2 restarts Jedris if it crashes. dcism accounts can't make pm2 start automatically when the machine reboots, so after a server reboot run `deploy/start.sh` again.
 

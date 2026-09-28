@@ -4,7 +4,7 @@ const { chromium } = require('playwright');
 const { createServer } = require('../server/index');
 
 (async () => {
-  const { server, wss } = createServer();
+  const { server, wss } = createServer({ dataFile: null });
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${server.address().port}/`;
   const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
@@ -16,15 +16,21 @@ const { createServer } = require('../server/index');
     if (!ok) failures++;
   };
   const errors = [];
-  const openPlayer = async (name) => {
+  const visible = (page, id) => page.evaluate((i) => !document.getElementById(i).classList.contains('hidden'), id);
+  const newPlayerPage = async (name) => {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     page.on('pageerror', e => errors.push(`${name}: ${e.message}`));
     await page.goto(base);
-    await page.click('#btn-online');
-    await page.fill('#net-name', name);
-    await page.dispatchEvent('#net-name', 'change');
-    await page.waitForFunction(() => document.getElementById('net-status').dataset.state === 'online');
+    await page.waitForFunction(() => !document.getElementById('welcome').classList.contains('hidden'));
     return page;
+  };
+  const enterLobby = async (page, guestName) => {
+    await page.click('#btn-online');
+    if (guestName) {
+      await page.fill('#net-name', guestName);
+      await page.dispatchEvent('#net-name', 'change');
+    }
+    await page.waitForFunction(() => document.getElementById('net-status').dataset.state === 'online');
   };
   const game = (page) => page.evaluate(() => {
     const { App } = window.Jedris;
@@ -37,8 +43,52 @@ const { createServer } = require('../server/index');
   });
 
   try {
-    const a = await openPlayer('Alpha');
-    const b = await openPlayer('Bravo');
+    // Accounts: Alpha signs up with a DCISM ID, Bravo plays as a guest.
+    const a = await newPlayerPage('Alpha');
+    await check('first visit offers sign in or guest', () => visible(a, 'welcome'));
+    await a.click('#btn-welcome-signup');
+    await a.fill('#in-dcism', 's23105047');
+    await a.fill('#in-username', 'Alpha');
+    await a.fill('#in-new-password', 'password123');
+    await a.fill('#in-confirm', 'password12');
+    await a.click('#form-signup button[type=submit]');
+    await a.waitForFunction(() => document.querySelector('#form-signup .form-error').textContent !== '');
+    await check('sign up catches mismatched passwords', async () => (await a.textContent('#form-signup .form-error')).includes("don't match"));
+    await a.fill('#in-confirm', 'password123');
+    await a.click('#form-signup button[type=submit]');
+    await a.waitForFunction(() => window.Jedris.App.state === 'menu');
+    await check('sign up signs you in', async () => (await a.textContent('#btn-account')).includes('Alpha'));
+    await a.reload();
+    await a.waitForTimeout(400);
+    await check('session survives a reload without the welcome screen', async () =>
+      (await visible(a, 'menu')) && (await a.textContent('#btn-account')).includes('Alpha'));
+
+    await a.click('#btn-account');
+    await a.click('#btn-signout');
+    await a.waitForFunction(() => !window.Jedris.Account.signedIn());
+    await check('sign out returns to the sign-in form', () => visible(a, 'form-signin'));
+    await a.fill('#in-login', 's23105047');
+    await a.fill('#in-password', 'wrongpass1');
+    await a.click('#form-signin button[type=submit]');
+    await a.waitForFunction(() => document.querySelector('#form-signin .form-error').textContent !== '');
+    await check('wrong password is rejected', async () => (await a.textContent('#form-signin .form-error')).includes('Wrong'));
+    await a.fill('#in-password', 'password123');
+    await a.click('#form-signin button[type=submit]');
+    await a.waitForFunction(() => window.Jedris.App.state === 'menu');
+    await check('sign in with DCISM ID works', async () => (await a.textContent('#btn-account')).includes('Alpha'));
+
+    const b = await newPlayerPage('Bravo');
+    await b.click('#btn-welcome-guest');
+    await check('play as guest goes to the menu', () => visible(b, 'menu'));
+    await enterLobby(a);
+    await check('signed-in lobby uses the account name', async () =>
+      (await a.inputValue('#net-name')) === 'Alpha' && await a.isDisabled('#net-name'));
+    await enterLobby(b, 'alpha');
+    await b.waitForFunction(() => window.Jedris.Online.myName === 'Guest');
+    await check('guests cannot take an account name', async () => (await b.textContent('#net-name-note')).includes('belongs to an account'));
+    await b.fill('#net-name', 'Bravo');
+    await b.dispatchEvent('#net-name', 'change');
+    await b.waitForFunction(() => window.Jedris.Online.myName === 'Bravo');
     await check('lobby shows online status', async () => (await a.textContent('#net-status')).startsWith('ONLINE'));
 
     await a.click('#btn-create');
@@ -51,6 +101,9 @@ const { createServer } = require('../server/index');
     await a.waitForFunction(() => window.Jedris.App.mode === 'online' && window.Jedris.App.state === 'playing');
     await b.waitForFunction(() => window.Jedris.App.mode === 'online');
     await check('both players enter the match', async () => (await game(a)).round === 1 && (await game(b)).round === 1);
+    await check('players see each other\'s names', async () =>
+      (await b.evaluate(() => window.Jedris.Online.opponentName())) === 'Alpha' &&
+      (await a.evaluate(() => window.Jedris.Online.opponentName())) === 'Bravo');
 
     await a.waitForTimeout(3300); // countdown
     await a.keyboard.press('KeyW');
