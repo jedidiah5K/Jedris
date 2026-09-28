@@ -1,0 +1,12 @@
+{
+  "name": "jedris",
+  "version": "1.0.0",
+  "description": "Competitive block-stacking game for the browser. Static files, no build step.",
+  "private": true,
+  "scripts": {
+    "test": "node tests/run.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  }
+}

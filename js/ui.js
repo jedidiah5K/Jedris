@@ -1,0 +1,360 @@
+'use strict';
+
+/* =========================================================================
+ * UI / APP (menus, settings, match flow, main loop)
+ * ========================================================================= */
+const MODE_NAMES = { sprint: '40 Lines', blitz: 'Blitz', zen: 'Zen', versus: 'Local Versus' };
+const MODE_SUBS = { sprint: 'CLEAR 40 LINES', blitz: '2 MINUTE SCORE ATTACK', zen: 'ENDLESS', versus: '' };
+const MODE_ACCENTS = { sprint: '#38e8ff', blitz: '#ff9a3c', zen: '#4dff9a', versus: '#ff4fd8' };
+const $ = (id) => document.getElementById(id);
+const screens = ['menu', 'settings', 'help', 'pause', 'results'];
+function showScreen(id) { for (const s of screens) $(s).classList.toggle('hidden', s !== id); }
+
+const App = {
+  state: 'menu', // menu | playing | ending | results
+  mode: null,
+  games: [],
+  wins: [0, 0],
+  round: 0,
+  paused: false,
+  endTimer: 0,
+
+  inGame() { return this.state === 'playing' || this.state === 'ending'; },
+
+  start(mode) {
+    Sound.unlock();
+    this.mode = mode;
+    this.wins = [0, 0];
+    this.round = 0;
+    this.newRound();
+  },
+
+  newRound() {
+    this.round++;
+    this.paused = false;
+    this.endTimer = 0;
+    hideBanner();
+    showScreen(null);
+    if (this.mode === 'versus') {
+      const a = new Game({ mode: 'versus', seed: randomSeed(), name: 'P1' });
+      const b = new Game({ mode: 'versus', seed: randomSeed(), name: 'P2', sound: false });
+      a.sendGarbage = (n) => b.receiveGarbage(n);
+      b.sendGarbage = (n) => a.receiveGarbage(n);
+      this.games = [a, b];
+      Input.bind([{ game: a, keys: settings.keys.p1 }, { game: b, keys: settings.keys.p2 }]);
+    } else {
+      const g = new Game({ mode: this.mode, seed: randomSeed() });
+      this.games = [g];
+      Input.bind([{ game: g, keys: settings.keys.p1 }]);
+    }
+    this.state = 'playing';
+  },
+
+  tick() {
+    if (!this.inGame() || this.paused) return;
+    for (const g of this.games) g.tick();
+    if (this.state === 'playing') {
+      if (this.mode === 'versus') {
+        const over = this.games.map(g => g.phase === 'over');
+        if (over[0] || over[1]) {
+          for (const g of this.games) if (g.phase === 'playing') g.phase = 'done';
+          let msg;
+          if (over[0] && over[1]) msg = 'DRAW';
+          else {
+            const w = over[0] ? 1 : 0;
+            this.wins[w]++;
+            this.lastWinner = w;
+            msg = `PLAYER ${w + 1} WINS THE ROUND`;
+          }
+          const decided = Math.max(...this.wins) >= VERSUS_WINS;
+          showBanner(msg, decided ? '' : `Score ${this.wins[0]} – ${this.wins[1]}`);
+          this.state = 'ending';
+          this.endTimer = 2200;
+        }
+      } else {
+        const g = this.games[0];
+        if (g.phase === 'over' || g.phase === 'done') { this.state = 'ending'; this.endTimer = 1300; }
+      }
+    } else if (this.state === 'ending') {
+      this.endTimer -= TICK_MS;
+      if (this.endTimer <= 0) {
+        if (this.mode === 'versus' && Math.max(...this.wins) < VERSUS_WINS) this.newRound();
+        else this.showResults();
+      }
+    }
+  },
+
+  setPaused(p) {
+    this.paused = p;
+    Input.releaseAll();
+    showScreen(p ? 'pause' : null);
+  },
+
+  onEscape() {
+    if (Input.capture) return;
+    if (this.inGame()) this.setPaused(!this.paused);
+    else if (this.state !== 'menu') this.toMenu();
+  },
+
+  /** Global shortcuts outside the per-player bindings. Returns true when handled. */
+  onHotkey(code) {
+    const soloMode = this.mode && this.mode !== 'versus';
+    if (code === settings.keys.retry && soloMode && (this.inGame() || this.state === 'results')) {
+      this.start(this.mode);
+      return true;
+    }
+    if (code === 'Enter' && this.state === 'results') {
+      this.start(this.mode);
+      return true;
+    }
+    return false;
+  },
+
+  toMenu() {
+    this.state = 'menu';
+    this.games = [];
+    this.paused = false;
+    Input.bind([]);
+    hideBanner();
+    updateRecords();
+    showScreen('menu');
+  },
+
+  showResults() {
+    this.state = 'results';
+    hideBanner();
+    const tbl = $('res-table');
+    tbl.innerHTML = '';
+    let sub = '';
+    if (this.mode === 'versus') {
+      const w = this.wins[0] > this.wins[1] ? 0 : 1;
+      $('res-title').textContent = 'MATCH OVER';
+      $('res-big').textContent = `PLAYER ${w + 1} WINS`;
+      sub = `Rounds ${this.wins[0]} – ${this.wins[1]} · final round stats`;
+      Sound.play('win');
+      const [a, b] = this.games;
+      const rb = statRows(b);
+      tbl.innerHTML = statRows(a).map((r, i) =>
+        `<div class="stat-card"><div class="k">${r[0].toUpperCase()}</div><div class="v v2"><span>${r[1]}</span><span>${rb[i][1]}</span></div></div>`).join('');
+    } else {
+      const g = this.games[0];
+      const rec = loadRecords();
+      $('res-title').textContent = MODE_NAMES[this.mode].toUpperCase();
+      if (this.mode === 'sprint') {
+        if (g.phase === 'done') {
+          $('res-big').textContent = fmtTime(g.time);
+          if (!rec.sprint || g.time < rec.sprint) { rec.sprint = g.time; sub = 'NEW PERSONAL BEST'; }
+          else sub = `Best ${fmtTime(rec.sprint)}`;
+        } else { $('res-big').textContent = 'TOPPED OUT'; sub = `${g.lines} / ${SPRINT_LINES} lines`; }
+      } else if (this.mode === 'blitz') {
+        $('res-big').textContent = g.score.toLocaleString();
+        if (!rec.blitz || g.score > rec.blitz) { rec.blitz = g.score; sub = 'NEW PERSONAL BEST'; }
+        else sub = `Best ${rec.blitz.toLocaleString()}`;
+      } else {
+        $('res-big').textContent = `${g.lines} lines`;
+      }
+      saveRecords(rec);
+      tbl.innerHTML = statRows(g).map(r =>
+        `<div class="stat-card"><div class="k">${r[0].toUpperCase()}</div><div class="v">${r[1]}</div></div>`).join('');
+    }
+    $('res-sub').textContent = sub;
+    $('res-sub').classList.toggle('best', sub.startsWith('NEW'));
+    $('btn-again').textContent = this.mode === 'versus' ? 'Rematch' : 'Play Again';
+    $('res-hint').innerHTML = this.mode === 'versus'
+      ? '<kbd>ENTER</kbd> REMATCH · <kbd>ESC</kbd> MENU'
+      : `<kbd>ENTER</kbd> or <kbd>${keyLabel(settings.keys.retry)}</kbd> RETRY · <kbd>ESC</kbd> MENU`;
+    showScreen('results');
+  },
+};
+
+function statRows(g) {
+  return [
+    ['Time', fmtTime(g.time)],
+    ['Score', g.score.toLocaleString()],
+    ['Lines', g.lines],
+    ['Pieces', g.pieces],
+    ['PPS', g.pps.toFixed(2)],
+    ['APM', g.apm.toFixed(1)],
+    ['Attack', g.attack],
+    ['Max combo', g.maxCombo],
+    ['Max B2B', Math.max(0, g.maxB2b)],
+    ['Quads', g.stats.quads],
+    ['T-spins', g.stats.tspins],
+    ['Perfect clears', g.stats.pcs],
+  ];
+}
+
+function showBanner(text, small) {
+  const b = $('banner');
+  b.innerHTML = '';
+  b.append(text);
+  if (small) { const el = document.createElement('small'); el.textContent = small; b.append(el); }
+  b.classList.remove('hidden');
+}
+function hideBanner() { $('banner').classList.add('hidden'); }
+
+function updateRecords() {
+  const rec = loadRecords();
+  $('rec-sprint').innerHTML = rec.sprint ? `<small>BEST</small>${fmtTime(rec.sprint)}` : '';
+  $('rec-blitz').innerHTML = rec.blitz ? `<small>BEST</small>${rec.blitz.toLocaleString()}` : '';
+}
+
+/* ---------- how to play ---------- */
+function buildHelp() {
+  const rows = ACTIONS.map(a =>
+    `<tr><td>${ACTION_LABELS[a]}</td><td><kbd>${keyLabel(settings.keys.p1[a])}</kbd></td><td><kbd>${keyLabel(settings.keys.p2[a])}</kbd></td></tr>`).join('');
+  $('help-keys').innerHTML = `<tr><th>ACTION</th><th>PLAYER 1 / SOLO</th><th>PLAYER 2</th></tr>${rows}` +
+    `<tr><td>Quick retry (solo)</td><td><kbd>${keyLabel(settings.keys.retry)}</kbd></td><td></td></tr>` +
+    '<tr><td>Pause</td><td><kbd>Esc</kbd></td><td><kbd>Esc</kbd></td></tr>';
+}
+
+/* ---------- settings screen ---------- */
+function buildSettings() {
+  const handling = $('handling');
+  const visuals = $('visuals');
+  handling.innerHTML = '';
+  visuals.innerHTML = '';
+
+  const numberRow = (parent, key, label, hint, min, max, step = 1) => {
+    const row = document.createElement('div');
+    row.className = 'setting';
+    row.innerHTML = `<label>${label}<small>${hint}</small></label><div class="ctrl"></div>`;
+    const input = document.createElement('input');
+    Object.assign(input, { type: 'number', min, max, step, value: settings[key] });
+    input.addEventListener('change', () => {
+      let v = Number(input.value);
+      if (!Number.isFinite(v)) v = DEFAULT_SETTINGS[key];
+      v = Math.max(min, Math.min(max, v));
+      input.value = v;
+      settings[key] = v;
+      saveSettings();
+    });
+    row.querySelector('.ctrl').append(input);
+    parent.append(row);
+    return row;
+  };
+  const toggleRow = (parent, key, label, hint) => {
+    const row = document.createElement('div');
+    row.className = 'setting';
+    row.innerHTML = `<label>${label}<small>${hint}</small></label><div class="ctrl"></div>`;
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = !!settings[key];
+    input.addEventListener('change', () => { settings[key] = input.checked; saveSettings(); });
+    row.querySelector('.ctrl').append(input);
+    parent.append(row);
+    return input;
+  };
+
+  numberRow(handling, 'das', 'DAS (ms)', 'Delay before a held direction auto-repeats', 0, 500);
+  numberRow(handling, 'arr', 'ARR (ms)', 'Auto-repeat interval; 0 moves instantly to the wall', 0, 200);
+  const sdfRow = numberRow(handling, 'sdf', 'Soft drop factor (×)', 'Multiplier on gravity while soft dropping', 1, 100);
+  const inst = document.createElement('label');
+  inst.className = 'inline-check';
+  const instBox = document.createElement('input');
+  instBox.type = 'checkbox';
+  instBox.checked = settings.sdfInstant;
+  instBox.addEventListener('change', () => { settings.sdfInstant = instBox.checked; saveSettings(); });
+  inst.append('INSTANT', instBox);
+  sdfRow.querySelector('.ctrl').prepend(inst);
+  toggleRow(handling, 'dasCut', 'DAS cut on rotate', 'Rotating resets the DAS charge');
+
+  toggleRow(visuals, 'ghost', 'Ghost piece', 'Show where the piece will land');
+  toggleRow(visuals, 'flash', 'Line clear flash', 'Flash cleared rows');
+  toggleRow(visuals, 'shake', 'Screen shake', 'Shake the board on big attacks and incoming garbage');
+  toggleRow(visuals, 'sound', 'Sound effects', 'Synthesized with Web Audio');
+  const volRow = document.createElement('div');
+  volRow.className = 'setting';
+  volRow.innerHTML = '<label>Volume<small>Sound effect volume</small></label><div class="ctrl"></div>';
+  const vol = document.createElement('input');
+  Object.assign(vol, { type: 'range', min: 0, max: 1, step: 0.05, value: settings.volume });
+  vol.addEventListener('input', () => { settings.volume = Number(vol.value); saveSettings(); });
+  vol.addEventListener('change', () => { Sound.unlock(); Sound.play('rotate'); });
+  volRow.querySelector('.ctrl').append(vol);
+  visuals.append(volRow);
+
+  buildBinds();
+}
+
+function buildBinds() {
+  const tbl = $('binds');
+  const all = [];
+  for (const p of ['p1', 'p2']) for (const a of ACTIONS) all.push(settings.keys[p][a]);
+  const count = (code) => all.filter(c => c === code).length;
+  all.push(settings.keys.retry);
+  tbl.innerHTML = '<tr><th>ACTION</th><th>PLAYER 1 / SOLO</th><th>PLAYER 2</th></tr>';
+  const bindButton = (code, assign) => {
+    const btn = document.createElement('button');
+    btn.textContent = keyLabel(code);
+    if (count(code) > 1) { btn.classList.add('conflict'); btn.title = 'This key is bound more than once'; }
+    btn.addEventListener('click', () => {
+      btn.textContent = 'Press a key…';
+      btn.classList.add('listening');
+      Input.capture = (newCode) => {
+        if (newCode !== 'Escape') { assign(newCode); saveSettings(); }
+        buildBinds();
+      };
+    });
+    return btn;
+  };
+  for (const a of ACTIONS) {
+    const tr = document.createElement('tr');
+    const th = document.createElement('td');
+    th.textContent = ACTION_LABELS[a];
+    tr.append(th);
+    for (const p of ['p1', 'p2']) {
+      const td = document.createElement('td');
+      td.append(bindButton(settings.keys[p][a], (c) => { settings.keys[p][a] = c; }));
+      tr.append(td);
+    }
+    tbl.append(tr);
+  }
+  const tr = document.createElement('tr');
+  const label = document.createElement('td');
+  label.textContent = 'Quick retry (solo)';
+  const td = document.createElement('td');
+  td.append(bindButton(settings.keys.retry, (c) => { settings.keys.retry = c; }));
+  tr.append(label, td, document.createElement('td'));
+  tbl.append(tr);
+}
+
+function toggleFullscreen() {
+  if (document.fullscreenElement) document.exitFullscreen?.();
+  else document.documentElement.requestFullscreen?.().catch(() => {});
+}
+
+/* ---------- wiring ---------- */
+document.querySelectorAll('[data-mode]').forEach(btn =>
+  btn.addEventListener('click', () => App.start(btn.dataset.mode)));
+$('btn-settings').addEventListener('click', () => { Sound.unlock(); App.state = 'settings'; buildSettings(); showScreen('settings'); });
+$('btn-settings-back').addEventListener('click', () => { Input.capture = null; App.toMenu(); });
+$('btn-reset-settings').addEventListener('click', () => {
+  Object.assign(settings, clone(DEFAULT_SETTINGS));
+  saveSettings();
+  buildSettings();
+});
+$('btn-reset-records').addEventListener('click', (e) => {
+  const btn = e.currentTarget;
+  if (btn.dataset.armed !== '1') {
+    btn.dataset.armed = '1';
+    btn.textContent = 'Click again to confirm';
+    setTimeout(() => { btn.dataset.armed = ''; btn.textContent = 'Clear records'; }, 3000);
+    return;
+  }
+  saveRecords({});
+  btn.dataset.armed = '';
+  btn.textContent = 'Records cleared';
+  updateRecords();
+});
+$('btn-help').addEventListener('click', () => { Sound.unlock(); App.state = 'help'; buildHelp(); showScreen('help'); });
+$('btn-help-back').addEventListener('click', () => App.toMenu());
+$('btn-fullscreen').addEventListener('click', toggleFullscreen);
+document.querySelectorAll('.tile').forEach(t => t.addEventListener('mouseenter', () => Sound.play('move')));
+$('version').textContent = `v${VERSION}`;
+if (matchMedia('(hover: none) and (pointer: coarse)').matches) $('touch-note').classList.remove('hidden');
+$('btn-resume').addEventListener('click', () => App.setPaused(false));
+$('btn-restart').addEventListener('click', () => App.start(App.mode));
+$('btn-quit').addEventListener('click', () => App.toMenu());
+$('btn-again').addEventListener('click', () => App.start(App.mode));
+$('btn-res-menu').addEventListener('click', () => App.toMenu());
+

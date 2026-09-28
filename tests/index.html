@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jedris Tests</title>
+<style>
+  body { margin: 0; padding: 24px; background: #04060d; color: #e8f1ff; font: 15px/1.5 ui-monospace, Menlo, Consolas, monospace; }
+  h1 { font-size: 18px; letter-spacing: 0.1em; }
+  .pass { color: #4dff9a; } .fail { color: #ff4d6a; }
+  #summary { font-weight: 700; margin: 12px 0 18px; }
+  li { list-style: none; } li small { color: #7f8ea8; }
+</style>
+</head>
+<body>
+<h1>JEDRIS · GAME LOGIC TESTS</h1>
+<div id="summary">Running…</div>
+<ul id="list"></ul>
+<script src="../js/config.js"></script>
+<script src="../js/pieces.js"></script>
+<script src="../js/sound.js"></script>
+<script src="../js/game.js"></script>
+<script src="spec.js"></script>
+<script>
+  'use strict';
+  const results = runJedrisSpec();
+  const failed = results.filter(r => !r.ok);
+  const list = document.getElementById('list');
+  for (const r of results) {
+    const li = document.createElement('li');
+    li.className = r.ok ? 'pass' : 'fail';
+    li.textContent = `${r.ok ? '✓' : '✗'} ${r.name}`;
+    if (!r.ok && r.info !== undefined) {
+      const info = document.createElement('small');
+      info.textContent = '  ' + JSON.stringify(r.info);
+      li.append(info);
+    }
+    list.append(li);
+  }
+  const summary = document.getElementById('summary');
+  summary.textContent = failed.length ? `${failed.length} of ${results.length} FAILED` : `ALL ${results.length} PASSED`;
+  summary.className = failed.length ? 'fail' : 'pass';
+  window.__results = results;
+</script>
+</body>
+</html>
