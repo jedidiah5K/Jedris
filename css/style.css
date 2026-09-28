@@ -170,3 +170,29 @@ button.chip { font-size: 12px; letter-spacing: 0.25em; padding: 6px 14px; }
 .tips b { color: #fff; }
 .tips em { color: var(--violet); font-style: normal; font-weight: 700; }
 .help-keys td { padding: 6px; }
+
+/* ---------- online lobby ---------- */
+.net-status { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; letter-spacing: 0.25em; font-weight: 700;
+  color: var(--muted); margin-bottom: 14px; }
+.net-status::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+.net-status[data-state="online"] { color: var(--green); }
+.net-status[data-state="online"]::before { background: var(--green); box-shadow: 0 0 10px var(--green); }
+.net-status[data-state="connecting"]::before { background: var(--orange); animation: blink 1s infinite; }
+.net-status[data-state="offline"]::before, .net-status[data-state="unavailable"]::before { background: var(--danger); }
+.field { display: grid; gap: 6px; font-size: 12px; letter-spacing: 0.25em; color: var(--muted); font-weight: 700; }
+input[type=text] { background: rgba(0,0,0,0.4); color: var(--text); border: 1px solid var(--edge); padding: 11px 14px;
+  font-family: var(--display); font-size: 16px; letter-spacing: 0.08em; width: 100%; }
+input[type=text]:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 14px rgba(56,232,255,0.3); }
+.join-row { display: grid; grid-template-columns: 130px 1fr; gap: 10px; }
+#net-code { text-transform: uppercase; text-align: center; letter-spacing: 0.4em; }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+button:disabled:hover { background: var(--glass-2); border-color: var(--edge); }
+.lobby-error { color: var(--danger); font-weight: 700; min-height: 20px; margin-top: 10px; letter-spacing: 0.05em; }
+.lobby-wait { margin-top: 8px; padding: 20px; text-align: center; border: 1px solid var(--edge-hi); background: rgba(56,232,255,0.06); }
+.lobby-wait-title { font-size: 12px; letter-spacing: 0.35em; color: var(--muted); font-weight: 700; }
+.lobby-code { font-family: var(--display); font-size: 54px; font-weight: 900; letter-spacing: 0.3em; color: #fff; margin: 6px 0;
+  text-shadow: 0 0 24px rgba(56,232,255,0.8); user-select: all; }
+.lobby-wait-sub { color: #b7c3d9; font-weight: 600; margin: 6px 0 14px; }
+.spinner { width: 34px; height: 34px; margin: 0 auto 16px; border: 3px solid rgba(56,232,255,0.2); border-top-color: var(--cyan);
+  border-radius: 50%; animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }

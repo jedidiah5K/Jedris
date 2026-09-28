@@ -3,11 +3,11 @@
 /* =========================================================================
  * UI / APP (menus, settings, match flow, main loop)
  * ========================================================================= */
-const MODE_NAMES = { sprint: '40 Lines', blitz: 'Blitz', zen: 'Zen', versus: 'Local Versus' };
+const MODE_NAMES = { sprint: '40 Lines', blitz: 'Blitz', zen: 'Zen', versus: 'Local Versus', online: 'Online Versus' };
 const MODE_SUBS = { sprint: 'CLEAR 40 LINES', blitz: '2 MINUTE SCORE ATTACK', zen: 'ENDLESS', versus: '' };
 const MODE_ACCENTS = { sprint: '#38e8ff', blitz: '#ff9a3c', zen: '#4dff9a', versus: '#ff4fd8' };
 const $ = (id) => document.getElementById(id);
-const screens = ['menu', 'settings', 'help', 'pause', 'results'];
+const screens = ['menu', 'settings', 'help', 'online', 'pause', 'results'];
 function showScreen(id) { for (const s of screens) $(s).classList.toggle('hidden', s !== id); }
 
 const App = {
@@ -51,6 +51,12 @@ const App = {
   },
 
   tick() {
+    if (this.mode === 'online') {
+      if (!this.inGame()) return;
+      for (const g of this.games) g.tick();
+      Online.tick();
+      return;
+    }
     if (!this.inGame() || this.paused) return;
     for (const g of this.games) g.tick();
     if (this.state === 'playing') {
@@ -87,7 +93,53 @@ const App = {
   setPaused(p) {
     this.paused = p;
     Input.releaseAll();
+    const online = this.mode === 'online';
+    $('pause-title').textContent = online ? 'Match Menu' : 'Paused';
+    $('btn-restart').classList.toggle('hidden', online);
+    $('btn-quit').textContent = online ? 'Forfeit & Leave' : 'Main Menu';
     showScreen(p ? 'pause' : null);
+  },
+
+  /* ---------- online versus (rounds are decided by the server) ---------- */
+  startOnlineRound(seed) {
+    const m = Online.match;
+    this.mode = 'online';
+    this.round = m.round;
+    this.wins = Online.toLocalOrder(m.wins);
+    this.paused = false;
+    clearTimeout(this.onlineTimer);
+    hideBanner();
+    showScreen(null);
+    const me = new Game({ mode: 'versus', seed, name: 'YOU' });
+    me.net = { fx: [], popups: [] };
+    me.sendGarbage = (n) => Online.send({ t: 'attack', n });
+    const opp = new RemoteGame();
+    this.games = [me, opp];
+    Input.bind([{ game: me, keys: settings.keys.p1 }]);
+    this.state = 'playing';
+  },
+
+  onlineRoundEnd(won) {
+    const [me, opp] = this.games;
+    this.wins = Online.match.wins.slice();
+    if (me && me.phase !== 'over') { me.phase = 'done'; me.piece = null; }
+    if (opp && won) opp.phase = 'over';
+    this.state = 'ending';
+    const decided = Math.max(...this.wins) >= VERSUS_WINS;
+    Sound.play(won ? 'win' : 'topout');
+    showBanner(won ? 'YOU WIN THE ROUND' : 'ROUND LOST', decided ? '' : `${this.wins[0]} – ${this.wins[1]}`);
+  },
+
+  onlineMatchEnd() {
+    clearTimeout(this.onlineTimer);
+    this.onlineTimer = setTimeout(() => { if (this.mode === 'online' && this.state !== 'menu') this.showResults(); }, 2200);
+  },
+
+  onlineOpponentLeft(connectionLost) {
+    clearTimeout(this.onlineTimer);
+    this.onlineNotice = connectionLost ? 'CONNECTION TO THE SERVER WAS LOST' : 'YOUR OPPONENT LEFT THE MATCH';
+    if (this.state === 'menu' || this.state === 'online-lobby') return;
+    this.showResults();
   },
 
   onEscape() {
@@ -104,13 +156,16 @@ const App = {
       return true;
     }
     if (code === 'Enter' && this.state === 'results') {
-      this.start(this.mode);
+      $('btn-again').click();
       return true;
     }
     return false;
   },
 
   toMenu() {
+    if (this.mode === 'online') Online.leave();
+    clearTimeout(this.onlineTimer);
+    this.mode = null;
     this.state = 'menu';
     this.games = [];
     this.paused = false;
@@ -126,7 +181,21 @@ const App = {
     const tbl = $('res-table');
     tbl.innerHTML = '';
     let sub = '';
-    if (this.mode === 'versus') {
+    if (this.mode === 'online') {
+      const left = this.onlineNotice;
+      this.onlineNotice = null;
+      $('res-title').textContent = 'ONLINE MATCH';
+      $('res-big').textContent = left ? (left.startsWith('YOUR') ? 'VICTORY' : 'DISCONNECTED') : (this.wins[0] > this.wins[1] ? 'VICTORY' : 'DEFEAT');
+      sub = left || `${this.wins[0]} – ${this.wins[1]} VS ${Online.opponentName().toUpperCase()}`;
+      if (!left && this.wins[0] > this.wins[1]) Sound.play('win');
+      const [a, b] = this.games;
+      if (a && b) {
+        const rb = statRows(b);
+        tbl.innerHTML = statRows(a).map((r, i) =>
+          `<div class="stat-card"><div class="k">${r[0].toUpperCase()}</div><div class="v v2"><span>${r[1]}</span><span>${rb[i][1]}</span></div></div>`).join('');
+      }
+      $('btn-again').disabled = !!left;
+    } else if (this.mode === 'versus') {
       const w = this.wins[0] > this.wins[1] ? 0 : 1;
       $('res-title').textContent = 'MATCH OVER';
       $('res-big').textContent = `PLAYER ${w + 1} WINS`;
@@ -159,8 +228,9 @@ const App = {
     }
     $('res-sub').textContent = sub;
     $('res-sub').classList.toggle('best', sub.startsWith('NEW'));
-    $('btn-again').textContent = this.mode === 'versus' ? 'Rematch' : 'Play Again';
-    $('res-hint').innerHTML = this.mode === 'versus'
+    if (this.mode !== 'online') $('btn-again').disabled = false;
+    $('btn-again').textContent = this.mode === 'versus' || this.mode === 'online' ? 'Rematch' : 'Play Again';
+    $('res-hint').innerHTML = this.mode === 'versus' || this.mode === 'online'
       ? '<kbd>ENTER</kbd> REMATCH · <kbd>ESC</kbd> MENU'
       : `<kbd>ENTER</kbd> or <kbd>${keyLabel(settings.keys.retry)}</kbd> RETRY · <kbd>ESC</kbd> MENU`;
     showScreen('results');
@@ -355,6 +425,15 @@ if (matchMedia('(hover: none) and (pointer: coarse)').matches) $('touch-note').c
 $('btn-resume').addEventListener('click', () => App.setPaused(false));
 $('btn-restart').addEventListener('click', () => App.start(App.mode));
 $('btn-quit').addEventListener('click', () => App.toMenu());
-$('btn-again').addEventListener('click', () => App.start(App.mode));
+$('btn-again').addEventListener('click', () => {
+  if ($('btn-again').disabled) return;
+  if (App.mode === 'online') {
+    Online.send({ t: 'rematch' });
+    $('btn-again').textContent = 'Waiting for opponent…';
+    $('btn-again').disabled = true;
+    return;
+  }
+  App.start(App.mode);
+});
 $('btn-res-menu').addEventListener('click', () => App.toMenu());
 

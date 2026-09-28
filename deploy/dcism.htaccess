@@ -1,0 +1,15 @@
+# Jedris on dcism.org: copy this file to your subdomain folder as ".htaccess".
+# It forwards every request (including the online-versus WebSocket) to the
+# Node server started with "npm start" (port 51920 by default).
+RewriteEngine On
+
+# Always use HTTPS
+RewriteCond %{HTTPS} !=on
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# WebSocket connections for online versus
+RewriteCond %{HTTP:Upgrade} =websocket [NC]
+RewriteRule (.*) ws://127.0.0.1:51920%{REQUEST_URI} [P,L]
+
+# Everything else: the game and its API
+RewriteRule (.*) http://127.0.0.1:51920%{REQUEST_URI} [P,L]

@@ -42,6 +42,10 @@
         <span><span class="t-name">ZEN</span><span class="t-desc">Endless stacking, no game over</span></span>
         <span class="t-rec"></span>
       </button>
+      <button class="tile" id="btn-online" style="--c: #5b8cff">
+        <span><span class="t-name">ONLINE VERSUS</span><span class="t-desc">Battle anyone over the internet: quick match or room code</span></span>
+        <span class="t-rec"><small>LIVE</small>1V1</span>
+      </button>
       <button class="tile" data-mode="versus" style="--c: var(--magenta)">
         <span><span class="t-name">LOCAL VERSUS</span><span class="t-desc">Two players, one keyboard, best of 3</span></span>
         <span class="t-rec"></span>
@@ -70,6 +74,7 @@
       <div class="help-card" style="--c: var(--cyan)"><b>40 Lines</b>Clear 40 lines as fast as possible. Your best time is saved.</div>
       <div class="help-card" style="--c: var(--orange)"><b>Blitz</b>Score as much as you can in 2 minutes. Gravity speeds up every 10 lines.</div>
       <div class="help-card" style="--c: var(--green)"><b>Zen</b>No timer, no game over. Topping out just wipes the board.</div>
+      <div class="help-card" style="--c: #5b8cff"><b>Online Versus</b>Real-time 1v1 over the internet. Quick match, or share a room code with a friend.</div>
       <div class="help-card" style="--c: var(--magenta)"><b>Local Versus</b>Two players on one keyboard. Attacks become garbage for the other side. First to 2 rounds wins.</div>
     </div>
     <h3>Controls</h3>
@@ -100,6 +105,34 @@
   </div>
 </div>
 
+<div id="online" class="screen dim hidden">
+  <div class="panel">
+    <h2 class="panel-title">Online Versus<span class="sub">BEST OF 3 · REAL-TIME 1V1</span></h2>
+    <div class="net-status" id="net-status" data-state="offline">SERVER OFFLINE</div>
+    <div class="warn hidden" id="net-help"></div>
+    <label class="field"><span>PLAYER NAME</span>
+      <input id="net-name" type="text" maxlength="16" placeholder="Player" autocomplete="nickname" spellcheck="false"></label>
+    <div class="stack" style="margin-top:16px">
+      <button id="btn-quick" class="primary">Quick Match</button>
+      <button id="btn-create">Create Private Room</button>
+      <div class="join-row">
+        <input id="net-code" type="text" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code">
+        <button id="btn-join">Join Room</button>
+      </div>
+    </div>
+    <div class="lobby-error" id="lobby-error" role="alert"></div>
+    <div class="lobby-wait hidden" id="lobby-wait">
+      <div class="lobby-wait-title" id="lobby-wait-title"></div>
+      <div class="lobby-code" id="lobby-code"></div>
+      <div class="lobby-wait-sub" id="lobby-wait-sub"></div>
+      <div class="spinner"></div>
+      <button id="btn-lobby-cancel">Cancel</button>
+    </div>
+    <div class="row" style="margin-top:20px"><button id="btn-lobby-back">Back</button></div>
+    <p class="menu-foot" style="text-align:center">ONLINE MATCHES USE YOUR PLAYER 1 KEYS</p>
+  </div>
+</div>
+
 <div id="settings" class="screen dim hidden">
   <div class="panel wide">
     <h2 class="panel-title">Config<span class="sub">SAVED AUTOMATICALLY TO THIS BROWSER</span></h2>
@@ -121,7 +154,7 @@
 
 <div id="pause" class="screen dim hidden">
   <div class="panel" style="width:min(380px,100%)">
-    <h2 class="panel-title" style="text-align:center">Paused</h2>
+    <h2 class="panel-title" style="text-align:center" id="pause-title">Paused</h2>
     <div class="stack">
       <button id="btn-resume" class="primary">Resume</button>
       <button id="btn-restart">Restart</button>
@@ -153,6 +186,7 @@
 <script src="js/input.js"></script>
 <script src="js/render.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/online.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

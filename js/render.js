@@ -738,12 +738,15 @@ function render(now = performance.now()) {
   const s = Math.max(6, Math.floor(Math.min((W - 24) / totalW, (H - 24) / UNIT_H)));
   const x0 = (W - totalW * s) / 2, y0 = (H - UNIT_H * s) / 2;
   games.forEach((g, i) => {
-    const header = App.mode === 'versus'
-      ? { name: `PLAYER ${i + 1}`, wins: App.wins[i], accent: ACCENTS[i] }
-      : { name: MODE_NAMES[App.mode].toUpperCase(), sub: MODE_SUBS[App.mode], accent: MODE_ACCENTS[App.mode] };
+    let header;
+    if (App.mode === 'versus') header = { name: `PLAYER ${i + 1}`, wins: App.wins[i], accent: ACCENTS[i] };
+    else if (App.mode === 'online') {
+      const name = i === 0 ? (Online.player.name || 'YOU') : Online.opponentName();
+      header = { name: name.toUpperCase(), wins: App.wins[i], accent: ACCENTS[i] };
+    } else header = { name: MODE_NAMES[App.mode].toUpperCase(), sub: MODE_SUBS[App.mode], accent: MODE_ACCENTS[App.mode] };
     drawPlayer(g, { x: x0 + i * (UNIT_W + UNIT_GAP) * s, y: y0, s }, header, t, dt);
   });
-  if (App.mode === 'versus') {
+  if (App.mode === 'versus' || App.mode === 'online') {
     const cx = W / 2, cy = y0 + (BOARD_Y + 10) * s;
     drawCenterText('VS', cx, cy, s * 1.3, '#9a6bff', s * 3, 0.9);
     setFont(700, s * 0.45, FONT_U, s * 0.3);
