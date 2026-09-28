@@ -47,7 +47,7 @@ const url = (p) => 'file://' + path.join(root, p);
   await check('esc returns to menu', () => visible('menu'));
 
   await page.click('[data-mode="versus"]');
-  await page.waitForTimeout(3300);
+  await page.waitForFunction(() => window.Jedris.App.games.every(g => g.phase === 'playing'), null, { timeout: 10000 }); // countdown
   await page.keyboard.press('KeyW');
   await page.keyboard.press('ArrowUp');
   await page.waitForTimeout(100);
@@ -67,8 +67,9 @@ const url = (p) => 'file://' + path.join(root, p);
   await page.keyboard.press('Escape');
   await page.click('#btn-quit');
   await page.click('[data-mode="sprint"]');
-  await page.waitForTimeout(3400);
+  await page.waitForFunction(() => window.Jedris.App.games.every(g => g.phase === 'playing'), null, { timeout: 10000 }); // countdown
   for (let i = 0; i < 6; i++) { await page.keyboard.press(i % 2 ? 'KeyA' : 'KeyD'); await page.keyboard.press('KeyW'); }
+  await page.waitForFunction(() => window.Jedris.App.games[0].pieces === 6, null, { timeout: 3000 }).catch(() => {});
   await check('sprint: pieces placed from keyboard', async () => (await state()).pieces[0] === 6);
   await page.keyboard.press('Backquote');
   await check('quick retry restarts the run', async () => { const s = await state(); return s.pieces[0] === 0 && s.state === 'playing'; });

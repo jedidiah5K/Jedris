@@ -105,7 +105,7 @@ const { createServer } = require('../server/index');
       (await b.evaluate(() => window.Jedris.Online.opponentName())) === 'Alpha' &&
       (await a.evaluate(() => window.Jedris.Online.opponentName())) === 'Bravo');
 
-    await a.waitForTimeout(3300); // countdown
+    await a.waitForFunction(() => window.Jedris.App.games[0].phase === 'playing', null, { timeout: 10000 }); // countdown
     await a.keyboard.press('KeyW');
     await a.keyboard.press('KeyW');
     await a.waitForTimeout(400);
