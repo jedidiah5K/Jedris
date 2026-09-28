@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jedris — Competitive Block Stacking</title>
+<meta name="description" content="Jedris is a fast, modern competitive block-stacking game for the browser: 40 Lines, Blitz, Zen and two-player local versus with garbage battles.">
+<meta name="theme-color" content="#04060d">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Jedris — Competitive Block Stacking">
+<meta property="og:description" content="Sprint, Blitz, Zen and local versus. SRS rotation, T-spins, combos and garbage battles in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="assets/og-image.png">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<!-- Display fonts (optional: everything falls back to system fonts when offline) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="menu" class="screen">
+  <div class="topbar"><span><span class="dot"></span>JEDRIS // LOCAL NODE ONLINE</span>
+    <span class="topbar-right"><span id="clock"></span><button id="btn-fullscreen" class="chip" title="Toggle fullscreen">FULLSCREEN</button></span></div>
+  <div class="menu-body">
+    <div class="menu-col">
+      <h1 class="logo">JEDRIS</h1>
+      <p class="tagline">COMPETITIVE BLOCK STACKING</p>
+      <button class="tile" data-mode="sprint" style="--c: var(--cyan)">
+        <span><span class="t-name">40 LINES</span><span class="t-desc">Race to clear 40 lines</span></span>
+        <span class="t-rec" id="rec-sprint"></span>
+      </button>
+      <button class="tile" data-mode="blitz" style="--c: var(--orange)">
+        <span><span class="t-name">BLITZ</span><span class="t-desc">Two minutes. Maximum score.</span></span>
+        <span class="t-rec" id="rec-blitz"></span>
+      </button>
+      <button class="tile" data-mode="zen" style="--c: var(--green)">
+        <span><span class="t-name">ZEN</span><span class="t-desc">Endless stacking, no game over</span></span>
+        <span class="t-rec"></span>
+      </button>
+      <button class="tile" data-mode="versus" style="--c: var(--magenta)">
+        <span><span class="t-name">LOCAL VERSUS</span><span class="t-desc">Two players, one keyboard, best of 3</span></span>
+        <span class="t-rec"></span>
+      </button>
+      <div class="tile-row">
+        <button class="tile small" id="btn-help" style="--c: #ffd93d">
+          <span><span class="t-name">HOW TO PLAY</span><span class="t-desc">Controls, scoring and attacks</span></span>
+        </button>
+        <button class="tile small" id="btn-settings" style="--c: var(--violet)">
+          <span><span class="t-name">CONFIG</span><span class="t-desc">Handling, keys and sound</span></span>
+        </button>
+      </div>
+      <div id="touch-note" class="warn hidden">Jedris is played with a keyboard. Connect one, or open this page on a computer.</div>
+      <div class="menu-foot">SOLO USES PLAYER 1 KEYS · <kbd>ESC</kbd> PAUSE</div>
+    </div>
+  </div>
+  <footer class="site-foot"><span id="version"></span> · <a href="https://github.com/jedidiah5K/Jedris" target="_blank" rel="noopener">SOURCE</a></footer>
+</div>
+
+<div id="help" class="screen dim hidden">
+  <div class="panel wide">
+    <h2 class="panel-title">How to Play<span class="sub">STACK · CLEAR · ATTACK</span></h2>
+    <p class="lead">Pieces fall into a 10-wide well. Fill a horizontal row completely to clear it. Clear lines fast, and clear them with style: bigger clears send garbage to your opponent in versus.</p>
+    <h3>Modes</h3>
+    <div class="help-grid">
+      <div class="help-card" style="--c: var(--cyan)"><b>40 Lines</b>Clear 40 lines as fast as possible. Your best time is saved.</div>
+      <div class="help-card" style="--c: var(--orange)"><b>Blitz</b>Score as much as you can in 2 minutes. Gravity speeds up every 10 lines.</div>
+      <div class="help-card" style="--c: var(--green)"><b>Zen</b>No timer, no game over. Topping out just wipes the board.</div>
+      <div class="help-card" style="--c: var(--magenta)"><b>Local Versus</b>Two players on one keyboard. Attacks become garbage for the other side. First to 2 rounds wins.</div>
+    </div>
+    <h3>Controls</h3>
+    <table class="binds help-keys" id="help-keys"></table>
+    <h3>Attack table</h3>
+    <div class="help-grid dense">
+      <div class="atk"><span>Single</span><b>0</b></div>
+      <div class="atk"><span>Double</span><b>1</b></div>
+      <div class="atk"><span>Triple</span><b>2</b></div>
+      <div class="atk"><span>Quad (4 lines)</span><b>4</b></div>
+      <div class="atk"><span>T-Spin Single</span><b>2</b></div>
+      <div class="atk"><span>T-Spin Double</span><b>4</b></div>
+      <div class="atk"><span>T-Spin Triple</span><b>6</b></div>
+      <div class="atk"><span>T-Spin Mini Double</span><b>1</b></div>
+      <div class="atk"><span>Back-to-back bonus</span><b>+1</b></div>
+      <div class="atk"><span>Perfect clear</span><b>+10</b></div>
+      <div class="atk"><span>Combo 2–3 / 4–5 / 6–7 / 8–10 / 11+</span><b>+1/2/3/4/5</b></div>
+    </div>
+    <h3>Techniques</h3>
+    <ul class="tips">
+      <li><b>T-Spin:</b> rotate a T piece into a slot so that 3 of the 4 corners around its center are filled. If only one of the two corners it points toward is filled, it's a <em>Mini</em>.</li>
+      <li><b>Back-to-back:</b> chain quads and T-spin clears without a plain single/double/triple in between for +1 attack each.</li>
+      <li><b>Combo:</b> clear lines with consecutive pieces. The longer the chain, the more garbage you send.</li>
+      <li><b>Cancelling:</b> incoming garbage waits in the red meter beside your board for half a second. Clear lines to cancel it before it rises.</li>
+      <li><b>Hold</b> swaps the current piece into storage once per piece. <b>Ghost</b> shows where the piece will land.</li>
+    </ul>
+    <div class="row" style="margin-top:22px"><button id="btn-help-back" class="primary">Back</button></div>
+  </div>
+</div>
+
+<div id="settings" class="screen dim hidden">
+  <div class="panel wide">
+    <h2 class="panel-title">Config<span class="sub">SAVED AUTOMATICALLY TO THIS BROWSER</span></h2>
+    <h3>Handling</h3>
+    <div id="handling"></div>
+    <h3>Visuals &amp; Sound</h3>
+    <div id="visuals"></div>
+    <h3>Controls</h3>
+    <div class="warn">Heads up: many keyboards can't register lots of keys pressed at once (ghosting). In Local Versus, if some inputs get dropped, try binding keys that are further apart.</div>
+    <table class="binds" id="binds"></table>
+    <div class="row" style="margin-top:20px">
+      <button id="btn-reset-records">Clear records</button>
+      <button id="btn-reset-settings">Reset defaults</button>
+      <button id="btn-settings-back" class="primary">Back</button>
+    </div>
+    <p class="menu-foot" style="text-align:center">CLICK A KEY TO REBIND · <kbd>ESC</kbd> CANCELS</p>
+  </div>
+</div>
+
+<div id="pause" class="screen dim hidden">
+  <div class="panel" style="width:min(380px,100%)">
+    <h2 class="panel-title" style="text-align:center">Paused</h2>
+    <div class="stack">
+      <button id="btn-resume" class="primary">Resume</button>
+      <button id="btn-restart">Restart</button>
+      <button id="btn-quit">Main Menu</button>
+    </div>
+  </div>
+</div>
+
+<div id="results" class="screen dim hidden">
+  <div class="panel">
+    <h2 class="panel-title" id="res-title" style="text-align:center"></h2>
+    <div class="res-big" id="res-big"></div>
+    <div class="res-sub" id="res-sub"></div>
+    <div class="stat-grid" id="res-table"></div>
+    <div class="row">
+      <button id="btn-again" class="primary">Play Again</button>
+      <button id="btn-res-menu">Main Menu</button>
+    </div>
+    <p class="menu-foot" id="res-hint" style="text-align:center"></p>
+  </div>
+</div>
+
+<div id="banner" class="banner hidden"></div>
+
+<script src="js/config.js"></script>
+<script src="js/pieces.js"></script>
+<script src="js/sound.js"></script>
+<script src="js/game.js"></script>
+<script src="js/input.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
