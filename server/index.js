@@ -36,9 +36,12 @@ function createServer(opts = {}) {
     res.json({ ok: true, version: VERSION, online: hub.clients.size });
   });
   app.use('/api', auth.router());
-  for (const dir of PUBLIC_DIRS) app.use(`/${dir}`, express.static(path.join(ROOT, dir), { maxAge: '1h' }));
-  for (const file of PUBLIC_FILES) app.get(`/${file}`, (req, res) => res.sendFile(path.join(ROOT, file)));
-  app.get('/', (req, res) => res.sendFile(path.join(ROOT, 'index.html')));
+  // Browsers revalidate every file (a cheap 304 when unchanged), so an update shows up on the next reload.
+  const noCache = (res) => res.set('Cache-Control', 'no-cache');
+  for (const dir of PUBLIC_DIRS) app.use(`/${dir}`, express.static(path.join(ROOT, dir), { setHeaders: noCache }));
+  const sendPage = (file) => (req, res) => { noCache(res); res.sendFile(path.join(ROOT, file)); };
+  for (const file of PUBLIC_FILES) app.get(`/${file}`, sendPage(file));
+  app.get('/', sendPage('index.html'));
   app.use((req, res) => res.status(404).type('text').send('Not found'));
 
   const server = http.createServer(app);
