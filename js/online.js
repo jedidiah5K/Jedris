@@ -115,7 +115,7 @@ const Online = {
     this.ws = ws;
     ws.onopen = () => {
       this.setStatus('online');
-      this.send({ t: 'hello', name: this.player.name || 'Player' });
+      this.hello();
     };
     ws.onmessage = (ev) => {
       let m;
@@ -143,14 +143,28 @@ const Online = {
     updateOnlineStatus();
   },
 
+  /** Tell the server who we are: an account (by session token) or a guest name. */
+  hello() {
+    this.send({ t: 'hello', name: this.player.name || 'Player', token: Account.signedIn() ? Account.token : undefined });
+  },
+  /** Called after signing in or out. */
+  reidentify() {
+    if (this.lobby === 'idle' && !this.match) this.hello();
+    updateNameField();
+  },
+
   setName(name) {
     this.player.name = name;
     savePlayer(this.player);
-    this.send({ t: 'hello', name: name || 'Player' });
+    this.hello();
   },
 
   onMessage(m) {
     switch (m.t) {
+      case 'hello':
+        this.myName = m.name;
+        updateNameField();
+        break;
       case 'welcome':
       case 'pong':
         this.onlineCount = m.online | 0;
@@ -271,11 +285,27 @@ function updateLobby(error) {
   updateOnlineStatus();
 }
 
+function updateNameField() {
+  const input = $('net-name');
+  const signedIn = Account.signedIn();
+  input.disabled = signedIn;
+  $('net-name-label').textContent = signedIn ? 'PLAYING AS' : 'GUEST NAME';
+  if (signedIn) input.value = Account.user.username;
+  else if (document.activeElement !== input) input.value = Online.player.name || '';
+  const note = $('net-name-note');
+  note.textContent = !signedIn && Account.available
+    ? 'Sign in from the main menu to play under your account name.'
+    : '';
+  if (!signedIn && Online.myName === 'Guest' && Online.player.name && Online.player.name !== 'Guest') {
+    note.textContent = 'That name belongs to an account, so you\'ll show up as Guest. Pick another or sign in.';
+  }
+}
+
 function openOnlineLobby() {
   Sound.unlock();
   App.state = 'online-lobby';
   Online.lobby = 'idle';
-  $('net-name').value = Online.player.name || '';
+  updateNameField();
   showScreen('online');
   updateLobby();
   Online.connect();

@@ -25,7 +25,7 @@
 
 <div id="menu" class="screen">
   <div class="topbar"><span><span class="dot"></span>JEDRIS // LOCAL NODE ONLINE</span>
-    <span class="topbar-right"><span id="clock"></span><button id="btn-fullscreen" class="chip" title="Toggle fullscreen">FULLSCREEN</button></span></div>
+    <span class="topbar-right"><span id="clock"></span><button id="btn-account" class="chip account-chip hidden" title="Your account"></button><button id="btn-fullscreen" class="chip" title="Toggle fullscreen">FULLSCREEN</button></span></div>
   <div class="menu-body">
     <div class="menu-col">
       <h1 class="logo">JEDRIS</h1>
@@ -63,6 +63,77 @@
     </div>
   </div>
   <footer class="site-foot"><span id="version"></span> · <a href="https://github.com/jedidiah5K/Jedris" target="_blank" rel="noopener">SOURCE</a></footer>
+</div>
+
+<div id="welcome" class="screen dim hidden">
+  <div class="panel" style="width:min(440px,100%)">
+    <h1 class="logo small-logo">JEDRIS</h1>
+    <p class="tagline">COMPETITIVE BLOCK STACKING</p>
+    <p class="lead center">Sign in with your DCISM ID to keep your name and personal bests, or jump straight in as a guest.</p>
+    <div class="stack">
+      <button id="btn-welcome-signin" class="primary">Sign In</button>
+      <button id="btn-welcome-signup">Create Account</button>
+      <button id="btn-welcome-guest">Play as Guest</button>
+    </div>
+  </div>
+</div>
+
+<div id="account" class="screen dim hidden">
+  <div class="panel" style="width:min(460px,100%)">
+    <form id="form-signin" class="acct-view" novalidate>
+      <h2 class="panel-title">Sign In<span class="sub">WITH YOUR DCISM ACCOUNT</span></h2>
+      <label class="field"><span>DCISM ID</span>
+        <input id="in-login" name="login" type="text" maxlength="20" placeholder="s23105047" autocomplete="username" autocapitalize="none" spellcheck="false"></label>
+      <label class="field"><span>PASSWORD</span>
+        <input id="in-password" name="password" type="password" maxlength="128" autocomplete="current-password"></label>
+      <div class="form-error" role="alert"></div>
+      <div class="stack">
+        <button type="submit" class="primary">Sign In</button>
+        <button type="button" data-view="signup">Create an account</button>
+      </div>
+      <p class="form-note">Forgot your password? Ask the site admin to reset it.</p>
+    </form>
+
+    <form id="form-signup" class="acct-view hidden" novalidate>
+      <h2 class="panel-title">Create Account<span class="sub">USE YOUR DCISM ID · PICK YOUR OWN PASSWORD</span></h2>
+      <label class="field"><span>DCISM ID</span>
+        <input id="in-dcism" name="dcismId" type="text" maxlength="20" placeholder="s23105047" autocomplete="username" autocapitalize="none" spellcheck="false"></label>
+      <label class="field"><span>DISPLAY NAME</span>
+        <input id="in-username" name="username" type="text" maxlength="16" placeholder="Shown to opponents" autocomplete="nickname" spellcheck="false"></label>
+      <label class="field"><span>PASSWORD</span>
+        <input id="in-new-password" name="password" type="password" maxlength="128" autocomplete="new-password" placeholder="At least 8 characters"></label>
+      <label class="field"><span>CONFIRM PASSWORD</span>
+        <input id="in-confirm" name="confirm" type="password" maxlength="128" autocomplete="new-password"></label>
+      <div class="form-error" role="alert"></div>
+      <div class="stack">
+        <button type="submit" class="primary">Create Account</button>
+        <button type="button" data-view="signin">I already have an account</button>
+      </div>
+      <p class="form-note">This is your own Jedris password. Don't reuse your DCISM password.</p>
+    </form>
+
+    <div id="view-profile" class="acct-view hidden">
+      <h2 class="panel-title"><span id="prof-name"></span><span class="sub" id="prof-id"></span></h2>
+      <div class="stat-grid two" id="prof-records"></div>
+      <details class="pw-change">
+        <summary>Change password</summary>
+        <form id="form-password" novalidate>
+          <label class="field"><span>CURRENT PASSWORD</span>
+            <input name="current" type="password" maxlength="128" autocomplete="current-password"></label>
+          <label class="field"><span>NEW PASSWORD</span>
+            <input name="password" type="password" maxlength="128" autocomplete="new-password" placeholder="At least 8 characters"></label>
+          <div class="form-error" role="alert"></div>
+          <button type="submit">Save new password</button>
+        </form>
+      </details>
+      <div class="row" style="margin-top:18px">
+        <button id="btn-signout">Sign Out</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:14px"><button id="btn-account-back">Back</button></div>
+    <button id="btn-account-guest" class="linkish">Play as guest instead</button>
+  </div>
 </div>
 
 <div id="help" class="screen dim hidden">
@@ -110,8 +181,9 @@
     <h2 class="panel-title">Online Versus<span class="sub">BEST OF 3 · REAL-TIME 1V1</span></h2>
     <div class="net-status" id="net-status" data-state="offline">SERVER OFFLINE</div>
     <div class="warn hidden" id="net-help"></div>
-    <label class="field"><span>PLAYER NAME</span>
+    <label class="field"><span id="net-name-label">GUEST NAME</span>
       <input id="net-name" type="text" maxlength="16" placeholder="Player" autocomplete="nickname" spellcheck="false"></label>
+    <div class="form-note" id="net-name-note"></div>
     <div class="stack" style="margin-top:16px">
       <button id="btn-quick" class="primary">Quick Match</button>
       <button id="btn-create">Create Private Room</button>
@@ -186,6 +258,7 @@
 <script src="js/input.js"></script>
 <script src="js/render.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/account.js"></script>
 <script src="js/online.js"></script>
 <script src="js/main.js"></script>
 </body>

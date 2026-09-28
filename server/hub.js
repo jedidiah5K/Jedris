@@ -23,11 +23,13 @@ class Hub {
    * @param {object} [opts]
    *   setTimeout/clearTimeout: injectable timers (tests)
    *   random: () => [0,1)
+   *   auth: { userForToken(token), isAccountName(name) } for signed-in players
    */
   constructor(opts = {}) {
     this.setTimeout = opts.setTimeout || setTimeout;
     this.clearTimeout = opts.clearTimeout || clearTimeout;
     this.random = opts.random || Math.random;
+    this.auth = opts.auth || null;
     this.clients = new Set();
     this.rooms = new Map();   // code -> room (waiting for a second player)
     this.queue = [];          // clients waiting for quick match
@@ -36,7 +38,7 @@ class Hub {
 
   /** Register a client. `send(obj)` delivers a message to it. */
   connect(send) {
-    const client = { id: this.nextId++, name: 'Player', send, room: null, match: null, queued: false };
+    const client = { id: this.nextId++, name: 'Player', guest: true, send, room: null, match: null, queued: false };
     this.clients.add(client);
     send({ t: 'welcome', id: client.id, online: this.clients.size });
     return client;
@@ -50,7 +52,7 @@ class Hub {
   message(client, msg) {
     if (!msg || typeof msg.t !== 'string') return;
     switch (msg.t) {
-      case 'hello': client.name = cleanName(msg.name); break;
+      case 'hello': this.hello(client, msg); break;
       case 'ping': client.send({ t: 'pong', c: msg.c, online: this.clients.size }); break;
       case 'create': this.create(client); break;
       case 'join': this.join(client, msg.code); break;
@@ -62,6 +64,21 @@ class Hub {
       case 'dead': this.dead(client, msg.round); break;
       case 'rematch': this.rematch(client); break;
     }
+  }
+
+  /** Signed-in players play under their account name; guests pick any name that isn't one. */
+  hello(client, msg) {
+    const user = this.auth && msg.token ? this.auth.userForToken(msg.token) : null;
+    if (user) {
+      client.name = user.username;
+      client.guest = false;
+    } else {
+      let name = cleanName(msg.name);
+      if (this.auth && this.auth.isAccountName(name)) name = 'Guest';
+      client.name = name;
+      client.guest = true;
+    }
+    client.send({ t: 'hello', name: client.name, guest: client.guest });
   }
 
   /* ---------- lobby ---------- */
@@ -134,7 +151,7 @@ class Hub {
     const m = { players: [a, b], wins: [0, 0], round: 0, dead: [false, false], state: 'starting', rematch: [false, false], timer: null, code };
     a.match = m;
     b.match = m;
-    m.players.forEach((p, i) => p.send({ t: 'match', you: i, names: [a.name, b.name], code }));
+    m.players.forEach((p, i) => p.send({ t: 'match', you: i, names: [a.name, b.name], guests: [a.guest, b.guest], code }));
     this.startRound(m);
   }
 

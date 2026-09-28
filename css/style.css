@@ -180,9 +180,9 @@ button.chip { font-size: 12px; letter-spacing: 0.25em; padding: 6px 14px; }
 .net-status[data-state="connecting"]::before { background: var(--orange); animation: blink 1s infinite; }
 .net-status[data-state="offline"]::before, .net-status[data-state="unavailable"]::before { background: var(--danger); }
 .field { display: grid; gap: 6px; font-size: 12px; letter-spacing: 0.25em; color: var(--muted); font-weight: 700; }
-input[type=text] { background: rgba(0,0,0,0.4); color: var(--text); border: 1px solid var(--edge); padding: 11px 14px;
+input[type=text], input[type=password] { background: rgba(0,0,0,0.4); color: var(--text); border: 1px solid var(--edge); padding: 11px 14px;
   font-family: var(--display); font-size: 16px; letter-spacing: 0.08em; width: 100%; }
-input[type=text]:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 14px rgba(56,232,255,0.3); }
+input[type=text]:focus, input[type=password]:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 14px rgba(56,232,255,0.3); }
 .join-row { display: grid; grid-template-columns: 130px 1fr; gap: 10px; }
 #net-code { text-transform: uppercase; text-align: center; letter-spacing: 0.4em; }
 button:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -196,3 +196,21 @@ button:disabled:hover { background: var(--glass-2); border-color: var(--edge); }
 .spinner { width: 34px; height: 34px; margin: 0 auto 16px; border: 3px solid rgba(56,232,255,0.2); border-top-color: var(--cyan);
   border-radius: 50%; animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- accounts ---------- */
+.account-chip { color: var(--cyan); }
+.account-chip.guest { color: var(--muted); }
+.small-logo { font-size: 56px; text-align: center; }
+#welcome .tagline { text-align: center; letter-spacing: 0.3em; margin-left: 0; }
+.lead.center { text-align: center; margin-bottom: 22px; }
+.acct-view { display: grid; gap: 14px; }
+.form-error { color: var(--danger); font-weight: 700; min-height: 20px; letter-spacing: 0.03em; }
+.form-note { color: var(--muted); font-size: 13px; letter-spacing: 0.05em; margin: 4px 0 0; }
+button.linkish { display: block; margin: 14px auto 0; background: none; border: none; padding: 4px; font-size: 13px;
+  color: var(--muted); letter-spacing: 0.15em; }
+button.linkish:hover { color: var(--cyan); background: none; }
+.stat-grid.two { grid-template-columns: 1fr 1fr; }
+.pw-change { margin-top: 18px; border: 1px solid var(--edge); padding: 10px 14px; }
+.pw-change summary { cursor: pointer; font-weight: 700; letter-spacing: 0.2em; font-size: 13px; color: var(--muted); text-transform: uppercase; }
+.pw-change form { display: grid; gap: 12px; margin-top: 12px; }
+#net-name:disabled { opacity: 0.8; color: var(--cyan); }

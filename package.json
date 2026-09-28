@@ -1,6 +1,6 @@
 {
   "name": "jedris",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Competitive block-stacking game for the browser, with online versus.",
   "private": true,
   "license": "UNLICENSED",

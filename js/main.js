@@ -20,6 +20,7 @@ const tickClock = () => { $('clock').textContent = new Date().toLocaleTimeString
 tickClock();
 setInterval(tickClock, 10000);
 requestAnimationFrame(frame);
+Account.init();
 
 // Exposed for automated tests and tinkering in the console.
-window.Jedris = { Game, App, SHAPES, KICKS_JLSTZ, KICKS_I, KICKS_180, settings, TICK_MS, comboAttack, gravityForLevel };
+window.Jedris = { Game, App, Account, Online, SHAPES, KICKS_JLSTZ, KICKS_I, KICKS_180, settings, TICK_MS, comboAttack, gravityForLevel };
