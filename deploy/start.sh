@@ -1,11 +1,19 @@
 #!/bin/sh
-# Start the Jedris server in the background if it isn't already running.
-# Safe to run repeatedly (for example from cron every few minutes).
+# Start (or restart) Jedris under pm2 and save it, as dcism.org's
+# Custom Application Hosting expects.
+#   Usage: PORT=<port from the subdomain settings> sh deploy/start.sh
 cd "$(dirname "$0")/.." || exit 1
-PORT="${PORT:-51920}"
-if curl -fs "http://127.0.0.1:${PORT}/api/health" > /dev/null 2>&1; then
-  echo "Jedris is already running on port ${PORT}."
-  exit 0
+if [ -z "$PORT" ]; then
+  echo "Set PORT to the port shown in admin.dcism.org > Subdomains > settings, e.g.:"
+  echo "  PORT=20279 sh deploy/start.sh"
+  exit 1
 fi
-PORT="$PORT" nohup node server/index.js >> jedris.log 2>&1 &
-echo "Started Jedris on port ${PORT} (pid $!). Logs: $(pwd)/jedris.log"
+npx pm2 delete jedris > /dev/null 2>&1
+PORT="$PORT" npx pm2 start ecosystem.config.cjs && npx pm2 save
+sleep 2
+if curl -fs "http://127.0.0.1:${PORT}/api/health"; then
+  echo
+  echo "Jedris is up on port ${PORT}."
+else
+  echo "Jedris did not answer yet. Check: npx pm2 logs jedris --lines 30"
+fi

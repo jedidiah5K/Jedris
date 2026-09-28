@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "express": "^4.21.2",
+    "pm2": "^7.0.4",
     "ws": "^8.18.0"
   },
   "devDependencies": {
