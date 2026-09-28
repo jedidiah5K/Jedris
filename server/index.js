@@ -4,7 +4,7 @@
  * JEDRIS SERVER
  * Serves the static game and runs online versus over WebSockets (any path ending in /ws).
  *   PORT  listening port (default 51920, the first dcism.org Node port)
- *   HOST  bind address (default 127.0.0.1; use 0.0.0.0 to expose directly)
+ *   HOST  bind address (default 0.0.0.0, which dcism.org's proxy needs)
  * ========================================================================= */
 const path = require('path');
 const http = require('http');
@@ -75,7 +75,7 @@ function createServer() {
 
 if (require.main === module) {
   const port = Number(process.env.PORT) || 51920;
-  const host = process.env.HOST || '127.0.0.1';
+  const host = process.env.HOST || '0.0.0.0';
   const { server, wss } = createServer();
   server.listen(port, host, () => {
     console.log(`Jedris ${VERSION} listening on http://${host}:${port}`);

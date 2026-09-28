@@ -92,7 +92,8 @@ js/online.js            Online versus client: lobby, networking, opponent board 
 js/main.js              Fixed-timestep main loop
 server/index.js         Node server: static files, /api/health, WebSocket endpoint
 server/hub.js           Matchmaking, rooms, rounds and relays
-deploy/                 dcism.org .htaccess and start/stop scripts
+deploy/                 pm2 start/stop scripts for dcism.org
+ecosystem.config.cjs    pm2 process file
 assets/                 Favicon, app icons and share image
 tests/                  Logic suite (open tests/index.html), UI and online end-to-end tests
 ```
@@ -119,24 +120,32 @@ You can also open `tests/index.html` in a browser to run the game-logic suite by
 
 ## Deploying to dcism.org
 
-dcism.org runs Node.js apps behind Apache. Your app listens on one of the ports 51920–51929, and an `.htaccess` file in the subdomain folder forwards traffic to it.
+Jedris runs as a Node.js app under dcism.org's **Custom Application Hosting**.
 
-1. **Upload** the project to your subdomain folder over SFTP (everything except `node_modules/`, `tests/` and `.github/`).
-2. **Install dependencies** over SSH, inside that folder:
+1. **Pick the hosting type:** in admin.dcism.org → Subdomains → your subdomain's settings, set **Hosting Environment** to *Custom Application Hosting*. Note the port it shows (for example `20279`). You can also turn on **Force SSL** there.
+2. **Upload** the project into the subdomain folder (for example `~/jedris.dcism.org`). You can use SFTP, skipping `node_modules/`, `tests/` and `.github/`, or run `git clone https://github.com/jedidiah5K/Jedris.git .` in the empty folder.
+3. **Install and start it** in the dcism terminal, using your port:
    ```sh
+   cd ~/jedris.dcism.org
    npm ci --omit=dev
+   PORT=20279 sh deploy/start.sh
    ```
-3. **Add the proxy:** copy `deploy/dcism.htaccess` to `.htaccess` in the same folder. If you use a port other than 51920, change it in both `RewriteRule` lines.
-4. **Start the server:**
-   ```sh
-   sh deploy/start.sh        # or: PORT=51921 sh deploy/start.sh
-   ```
-   It runs in the background, logs to `jedris.log`, and does nothing if Jedris is already running. `sh deploy/stop.sh` stops it.
-5. **Check it:** open `https://<your-subdomain>.dcism.org/api/health`. It should say `"ok": true`.
+   This runs the server under pm2 (bound to `0.0.0.0` on your port), saves the pm2 process list, and checks `/api/health`.
+4. **Open** `https://<your-subdomain>.dcism.org`.
 
-If the server restarts, run `deploy/start.sh` again. If your account allows cron, `*/5 * * * * sh /path/to/jedris/deploy/start.sh` keeps it running automatically.
+Useful commands:
 
-If online matches connect but never start, or the lobby keeps saying the server is offline while `/api/health` works, the host is probably blocking WebSocket proxying. Everything else in the game still works.
+```sh
+npx pm2 status                   # is it running?
+npx pm2 logs jedris --lines 30   # recent logs
+sh deploy/stop.sh                # stop it
+```
+
+To update: pull or upload the new files, run `npm ci --omit=dev`, then run `PORT=<port> sh deploy/start.sh` again.
+
+pm2 restarts Jedris if it crashes. dcism accounts can't make pm2 start automatically when the machine reboots, so after a server reboot run `deploy/start.sh` again.
+
+No `.htaccess` is needed: Custom Application Hosting forwards the subdomain to your port by itself. Delete any `.htaccess` left over from an older setup.
 
 The display fonts load from Google Fonts. If they're unavailable, the game falls back to system fonts.
 
