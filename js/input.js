@@ -11,7 +11,7 @@ const Input = {
     window.addEventListener('keyup', e => this.onKey(e, 'up'));
     window.addEventListener('blur', () => {
       this.releaseAll();
-      if (App.inGame() && !App.paused) App.setPaused(true);
+      if (App.inGame() && !App.paused && App.mode !== 'online') App.setPaused(true);
     });
   },
   bind(list) { this.bindings = list; },

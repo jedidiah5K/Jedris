@@ -64,12 +64,17 @@ class Game {
     this.goTimer = 0;
     this.lastCountShown = 0;
     this.fx = []; // visual events consumed by the renderer
+    this.net = null; // online play: { fx, popups } mirrored to the opponent
+    this.ticksAlive = 0;
   }
 
   static emptyBoard() { return Array.from({ length: ROWS }, () => Array(COLS).fill(null)); }
 
   sfx(name, arg) { if (this.soundOn) Sound.play(name, arg); }
-  emit(ev) { if (this.fx.length < 64) this.fx.push(ev); }
+  emit(ev) {
+    if (this.fx.length < 64) this.fx.push(ev);
+    if (this.net && this.net.fx.length < 64) this.net.fx.push(ev);
+  }
   pieceCells(p = this.piece) { return SHAPES[p.type].states[p.rot].map(([cx, cy]) => ({ x: p.x + cx, y: p.y + cy })); }
 
   /* ---------- randomizer ---------- */
@@ -462,6 +467,7 @@ class Game {
 
   /* ---------- fixed-timestep update ---------- */
   tick() {
+    this.ticksAlive++;
     this.updateEffects();
     if (this.phase === 'countdown') {
       this.processEvents(false);
@@ -499,6 +505,7 @@ class Game {
 
   popup(text, color, big = false) {
     this.popups.push({ text, color, big, t: 0, life: 1600 });
+    if (this.net && this.net.popups.length < 16) this.net.popups.push([text, color, big ? 1 : 0]);
     if (this.popups.length > 6) this.popups.shift();
   }
 

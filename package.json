@@ -1,10 +1,22 @@
 {
   "name": "jedris",
-  "version": "1.0.0",
-  "description": "Competitive block-stacking game for the browser. Static files, no build step.",
+  "version": "1.1.0",
+  "description": "Competitive block-stacking game for the browser, with online versus.",
   "private": true,
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "test": "node tests/run.js"
+    "start": "node server/index.js",
+    "test": "npm run test:server && npm run test:client && npm run test:online",
+    "test:server": "node --test server/test/*.test.js",
+    "test:client": "node tests/run.js",
+    "test:online": "node tests/online.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "playwright": "^1.56.1"
