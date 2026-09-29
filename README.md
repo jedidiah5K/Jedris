@@ -14,11 +14,14 @@ The game itself is plain HTML, CSS and JavaScript with no build step, so it also
 
 ## Modes
 
+The main menu has four cards: **Solo** (40 Lines, Blitz, Zen, VS CPU), **Multiplayer** (Online Versus, Local Versus, Leaderboard), **How to Play** and **Config**, plus an **Add me as an app!** banner with install steps for iPhone and Android.
+
 | Mode | Goal |
 | --- | --- |
 | **40 Lines** | Clear 40 lines as fast as possible. Personal best is saved. |
 | **Blitz** | Score as much as you can in 2 minutes. Gravity rises every 10 lines. |
 | **Zen** | Endless, relaxed stacking. No timer and no game over. |
+| **VS CPU** | Best of 3 against a bot: Noob (0.55 pieces/sec, sloppy), Normal (1.0), Hard (1.7, uses hold), Master (2.5, builds for quads) and Legend (3.6). You both get the same pieces. The highest level you've beaten is saved. Works offline. |
 | **Online Versus** | Real-time 1v1 against anyone: quick match, or share a 4-letter room code with a friend. Best of 3, with rematches. |
 | **Local Versus** | Two players, one keyboard, split screen. Send garbage to top out your opponent. Best of 3 rounds. |
 
@@ -129,6 +132,7 @@ js/render.js            Canvas renderer, HUD and visual effects
 js/ui.js                App flow, menus, settings and keybind editor
 js/account.js           Sign in, sign up, guest mode and saved personal bests
 js/online.js            Online versus client: lobby, networking, opponent board mirror
+js/cpu.js               CPU opponent for VS CPU (placement search + per-level speed)
 js/main.js              Fixed-timestep main loop
 sw.js                   Service worker: offline copy for the installable app
 server/index.js         Node server: static files, /api/health, WebSocket endpoint

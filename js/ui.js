@@ -3,11 +3,11 @@
 /* =========================================================================
  * UI / APP (menus, settings, match flow, main loop)
  * ========================================================================= */
-const MODE_NAMES = { sprint: '40 Lines', blitz: 'Blitz', zen: 'Zen', versus: 'Local Versus', online: 'Online Versus' };
+const MODE_NAMES = { sprint: '40 Lines', blitz: 'Blitz', zen: 'Zen', versus: 'Local Versus', online: 'Online Versus', cpu: 'VS CPU' };
 const MODE_SUBS = { sprint: 'CLEAR 40 LINES', blitz: '2 MINUTE SCORE ATTACK', zen: 'ENDLESS', versus: '' };
 const MODE_ACCENTS = { sprint: '#38e8ff', blitz: '#ff9a3c', zen: '#4dff9a', versus: '#ff4fd8' };
 const $ = (id) => document.getElementById(id);
-const screens = ['menu', 'welcome', 'account', 'leaderboard', 'settings', 'help', 'online', 'pause', 'results'];
+const screens = ['menu', 'welcome', 'account', 'install', 'leaderboard', 'settings', 'help', 'online', 'pause', 'results'];
 function showScreen(id) { for (const s of screens) $(s).classList.toggle('hidden', s !== id); }
 
 const App = {
@@ -20,10 +20,13 @@ const App = {
   endTimer: 0,
 
   inGame() { return this.state === 'playing' || this.state === 'ending'; },
+  /** Two boards on this device, decided round by round (Local Versus and VS CPU). */
+  isLocalMatch() { return this.mode === 'versus' || this.mode === 'cpu'; },
 
-  start(mode) {
+  start(mode, cpuLevel) {
     Sound.unlock();
     this.mode = mode;
+    if (cpuLevel) this.cpuLevel = cpuLevel;
     this.wins = [0, 0];
     this.round = 0;
     this.newRound();
@@ -43,6 +46,15 @@ const App = {
       b.sendGarbage = (n) => a.receiveGarbage(n);
       this.games = [a, b];
       Input.bind([{ game: a, keys: settings.keys.p1 }, { game: b, keys: settings.keys.p2 }]);
+    } else if (this.mode === 'cpu') {
+      const seed = randomSeed(); // same pieces for you and the bot
+      const a = new Game({ mode: 'versus', seed, name: 'YOU' });
+      const b = new Game({ mode: 'versus', seed, name: 'CPU', sound: false });
+      a.sendGarbage = (n) => b.receiveGarbage(n);
+      b.sendGarbage = (n) => a.receiveGarbage(n);
+      this.games = [a, b];
+      this.cpu = new CpuPlayer(b, this.cpuLevel || CPU_LEVELS[1]);
+      Input.bind([{ game: a, keys: settings.keys.p1 }]);
     } else {
       const g = new Game({ mode: this.mode, seed: randomSeed() });
       this.games = [g];
@@ -59,9 +71,10 @@ const App = {
       return;
     }
     if (!this.inGame() || this.paused) return;
+    if (this.mode === 'cpu' && this.cpu && this.state === 'playing') this.cpu.update(TICK_MS);
     for (const g of this.games) g.tick();
     if (this.state === 'playing') {
-      if (this.mode === 'versus') {
+      if (this.isLocalMatch()) {
         const over = this.games.map(g => g.phase === 'over');
         if (over[0] || over[1]) {
           for (const g of this.games) if (g.phase === 'playing') g.phase = 'done';
@@ -71,7 +84,7 @@ const App = {
             const w = over[0] ? 1 : 0;
             this.wins[w]++;
             this.lastWinner = w;
-            msg = `PLAYER ${w + 1} WINS THE ROUND`;
+            msg = this.mode === 'cpu' ? (w === 0 ? 'YOU WIN THE ROUND' : 'CPU WINS THE ROUND') : `PLAYER ${w + 1} WINS THE ROUND`;
           }
           const decided = Math.max(...this.wins) >= VERSUS_WINS;
           showBanner(msg, decided ? '' : `Score ${this.wins[0]} – ${this.wins[1]}`);
@@ -85,7 +98,7 @@ const App = {
     } else if (this.state === 'ending') {
       this.endTimer -= TICK_MS;
       if (this.endTimer <= 0) {
-        if (this.mode === 'versus' && Math.max(...this.wins) < VERSUS_WINS) this.newRound();
+        if (this.isLocalMatch() && Math.max(...this.wins) < VERSUS_WINS) this.newRound();
         else this.showResults();
       }
     }
@@ -147,11 +160,12 @@ const App = {
     if (Input.capture) return;
     if (this.inGame()) this.setPaused(!this.paused);
     else if (this.state !== 'menu') this.toMenu();
+    else if (this.menuView && this.menuView !== 'main') showMenuView(MENU_PARENT[this.menuView] || 'main');
   },
 
   /** Global shortcuts outside the per-player bindings. Returns true when handled. */
   onHotkey(code) {
-    const soloMode = this.mode && this.mode !== 'versus';
+    const soloMode = this.mode && !this.isLocalMatch();
     if (code === settings.keys.retry && soloMode && (this.inGame() || this.state === 'results')) {
       this.start(this.mode);
       return true;
@@ -169,11 +183,13 @@ const App = {
     this.mode = null;
     this.state = 'menu';
     this.games = [];
+    this.cpu = null;
     this.paused = false;
     Input.bind([]);
     hideBanner();
     updateRecords();
     showScreen('menu');
+    showMenuView(this.menuView || 'main');
   },
 
   showResults() {
@@ -196,12 +212,25 @@ const App = {
           `<div class="stat-card"><div class="k">${r[0].toUpperCase()}</div><div class="v v2"><span>${r[1]}</span><span>${rb[i][1]}</span></div></div>`).join('');
       }
       $('btn-again').disabled = !!left;
-    } else if (this.mode === 'versus') {
+    } else if (this.isLocalMatch()) {
       const w = this.wins[0] > this.wins[1] ? 0 : 1;
-      $('res-title').textContent = 'MATCH OVER';
-      $('res-big').textContent = `PLAYER ${w + 1} WINS`;
-      sub = `Rounds ${this.wins[0]} – ${this.wins[1]} · final round stats`;
-      Sound.play('win');
+      if (this.mode === 'cpu') {
+        const lvl = this.cpuLevel || CPU_LEVELS[1];
+        $('res-title').textContent = `VS CPU · ${lvl.name}`;
+        $('res-big').textContent = w === 0 ? 'VICTORY' : 'DEFEAT';
+        sub = `Rounds ${this.wins[0]} – ${this.wins[1]} · final round stats`;
+        if (w === 0) {
+          Sound.play('win');
+          const rec = loadRecords();
+          const idx = CPU_LEVELS.indexOf(lvl);
+          if (!(rec.cpu >= idx)) { rec.cpu = idx; saveRecords(rec); sub = `YOU BEAT ${lvl.name} · NEW BEST`; }
+        }
+      } else {
+        $('res-title').textContent = 'MATCH OVER';
+        $('res-big').textContent = `PLAYER ${w + 1} WINS`;
+        sub = `Rounds ${this.wins[0]} – ${this.wins[1]} · final round stats`;
+        Sound.play('win');
+      }
       const [a, b] = this.games;
       const rb = statRows(b);
       tbl.innerHTML = statRows(a).map((r, i) =>
@@ -230,10 +259,10 @@ const App = {
         `<div class="stat-card"><div class="k">${r[0].toUpperCase()}</div><div class="v">${r[1]}</div></div>`).join('');
     }
     $('res-sub').textContent = sub;
-    $('res-sub').classList.toggle('best', sub.startsWith('NEW'));
+    $('res-sub').classList.toggle('best', sub.startsWith('NEW') || sub.endsWith('NEW BEST'));
     if (this.mode !== 'online') $('btn-again').disabled = false;
-    $('btn-again').textContent = this.mode === 'versus' || this.mode === 'online' ? 'Rematch' : 'Play Again';
-    $('res-hint').innerHTML = this.mode === 'versus' || this.mode === 'online'
+    $('btn-again').textContent = this.isLocalMatch() || this.mode === 'online' ? 'Rematch' : 'Play Again';
+    $('res-hint').innerHTML = this.isLocalMatch() || this.mode === 'online'
       ? '<kbd>ENTER</kbd> REMATCH · <kbd>ESC</kbd> MENU'
       : `<kbd>ENTER</kbd> or <kbd>${keyLabel(settings.keys.retry)}</kbd> RETRY · <kbd>ESC</kbd> MENU`;
     showScreen('results');
@@ -270,7 +299,73 @@ function updateRecords() {
   const rec = loadRecords();
   $('rec-sprint').innerHTML = rec.sprint ? `<small>BEST</small>${fmtTime(rec.sprint)}` : '';
   $('rec-blitz').innerHTML = rec.blitz ? `<small>BEST</small>${rec.blitz.toLocaleString()}` : '';
+  $('rec-cpu').innerHTML = rec.cpu >= 0 && CPU_LEVELS[rec.cpu] ? `<small>BEATEN</small>${CPU_LEVELS[rec.cpu].name}` : '';
+  for (const b of document.querySelectorAll('#cpu-levels .tile')) {
+    const i = Number(b.dataset.level);
+    b.querySelector('.t-rec').innerHTML = rec.cpu >= i ? '<small>BEATEN</small>✓' : '';
+  }
 }
+
+/* ---------- menu views (main, solo, vs cpu, multiplayer) ---------- */
+const MENU_VIEWS = ['main', 'solo', 'cpu', 'multi'];
+const MENU_PARENT = { solo: 'main', multi: 'main', cpu: 'solo' };
+function showMenuView(view) {
+  App.menuView = view;
+  for (const v of MENU_VIEWS) $(`view-${v}`).classList.toggle('hidden', v !== view);
+  const first = $(`view-${view}`).querySelector('.tile, button');
+  if (first && document.activeElement && document.activeElement !== document.body && !$('menu').contains(document.activeElement)) first.focus();
+}
+function buildCpuLevels() {
+  const box = $('cpu-levels');
+  box.innerHTML = '';
+  CPU_LEVELS.forEach((lvl, i) => {
+    const b = document.createElement('button');
+    b.className = 'tile';
+    b.dataset.level = i;
+    b.style.setProperty('--c', lvl.color);
+    b.innerHTML = `<span><span class="t-name">${lvl.name}</span><span class="t-desc">${lvl.desc} · ${lvl.pps.toFixed(1)} pieces/sec</span></span><span class="t-rec"></span>`;
+    b.addEventListener('click', () => App.start('cpu', lvl));
+    box.appendChild(b);
+  });
+}
+
+/* ---------- install as an app ---------- */
+let installPrompt = null; // Chrome/Android's install dialog, when the browser offers one
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  installPrompt = e;
+  $('btn-install-now').classList.remove('hidden');
+});
+const isInstalled = () => (typeof matchMedia === 'function' && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+function showInstallTab(which) {
+  $('steps-ios').classList.toggle('hidden', which !== 'ios');
+  $('steps-android').classList.toggle('hidden', which !== 'android');
+  $('tab-ios').classList.toggle('on', which === 'ios');
+  $('tab-android').classList.toggle('on', which === 'android');
+}
+function openInstall() {
+  Sound.unlock();
+  App.state = 'install';
+  const ua = navigator.userAgent || '';
+  showInstallTab(/android/i.test(ua) ? 'android' : 'ios');
+  const url = /^https?:/.test(location.protocol) ? location.host : 'jedris.dcism.org';
+  $('install-url-ios').textContent = url;
+  $('install-url-android').textContent = url;
+  $('install-done').hidden = !isInstalled();
+  showScreen('install');
+}
+$('btn-install').addEventListener('click', openInstall);
+$('btn-install-back').addEventListener('click', () => App.toMenu());
+$('tab-ios').addEventListener('click', () => showInstallTab('ios'));
+$('tab-android').addEventListener('click', () => showInstallTab('android'));
+$('btn-install-now').addEventListener('click', async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  await installPrompt.userChoice.catch(() => {});
+  installPrompt = null;
+  $('btn-install-now').classList.add('hidden');
+});
+if (isInstalled()) $('btn-install').classList.add('hidden');
 
 /* ---------- how to play ---------- */
 function buildHelp() {
@@ -397,6 +492,12 @@ function toggleFullscreen() {
 }
 
 /* ---------- wiring ---------- */
+buildCpuLevels();
+$('btn-solo').addEventListener('click', () => { Sound.unlock(); showMenuView('solo'); });
+$('btn-multi').addEventListener('click', () => { Sound.unlock(); showMenuView('multi'); });
+$('btn-cpu').addEventListener('click', () => { Sound.unlock(); showMenuView('cpu'); });
+document.querySelectorAll('#menu [data-back]').forEach(b =>
+  b.addEventListener('click', () => showMenuView(b.dataset.back || 'main')));
 document.querySelectorAll('[data-mode]').forEach(btn =>
   btn.addEventListener('click', () => App.start(btn.dataset.mode)));
 $('btn-settings').addEventListener('click', () => {

@@ -25,6 +25,7 @@ const { createServer } = require('../server/index');
     return page;
   };
   const enterLobby = async (page, guestName) => {
+    await page.evaluate(() => showMenuView('multi'));
     await page.click('#btn-online');
     if (guestName) {
       await page.fill('#net-name', guestName);
@@ -177,6 +178,7 @@ const { createServer } = require('../server/index');
 
     // Quick match
     await a.click('#btn-res-menu');
+    for (const pg of [a, b]) await pg.evaluate(() => showMenuView('multi'));
     await a.click('#btn-online');
     await b.click('#btn-online');
     await a.waitForFunction(() => document.getElementById('net-status').dataset.state === 'online');
@@ -202,7 +204,10 @@ const { createServer } = require('../server/index');
     await app.waitForFunction(() => window.Jedris && window.Jedris.App, null, { timeout: 5000 }).catch(() => {});
     await check('the game opens offline after one visit', () => app.evaluate(() => !!window.Jedris && typeof window.Jedris.App.start === 'function'));
     if (await app.isVisible('#btn-welcome-guest')) await app.tap('#btn-welcome-guest');
+    await app.evaluate(() => showMenuView('solo'));
     await app.tap('[data-mode="sprint"]');
+    await app.waitForFunction(() => window.Jedris.App.state === 'playing', null, { timeout: 5000 }).catch(() => {});
+    await check('vs cpu is available offline', () => app.evaluate(() => typeof CpuPlayer === 'function'));
     await check('solo modes play offline', async () => {
       await app.waitForFunction(() => window.Jedris.App.state === 'playing', null, { timeout: 5000 });
       return true;
