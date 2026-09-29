@@ -46,11 +46,22 @@ const url = (p) => 'file://' + path.join(root, p);
   await page.keyboard.press('Escape');
   await check('esc returns to menu', () => visible('menu'));
 
+  await page.click('#btn-leaderboard');
+  await page.waitForFunction(() => !document.querySelector('#lb-body').textContent.includes('Loading'));
+  await check('leaderboard opens (and explains it needs the server offline)', async () =>
+    (await visible('leaderboard')) && (await page.textContent('#lb-body')).includes('server'));
+  await page.keyboard.press('Escape');
+  await check('tab title is "It\'s Jedris"', async () => (await page.title()) === "It's Jedris");
+
   await page.click('[data-mode="versus"]');
   await page.waitForFunction(() => window.Jedris.App.games.every(g => g.phase === 'playing'), null, { timeout: 10000 }); // countdown
   await page.keyboard.press('KeyW');
   await page.keyboard.press('ArrowUp');
   await page.waitForTimeout(100);
+  await check('versus: both players get the same pieces', () => page.evaluate(() => {
+    const [a, b] = window.Jedris.App.games;
+    return a.piece.type === b.piece.type && a.queue.join() === b.queue.join();
+  }));
   await check('versus: both players take keyboard input', async () => (await state()).pieces.join() === '1,1');
   await page.evaluate(() => window.Jedris.App.games[0].sendGarbage(6));
   await check('versus: attacks reach the opponent', async () => (await state()).incoming[1] === 6);

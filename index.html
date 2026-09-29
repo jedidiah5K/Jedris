@@ -3,12 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Jedris — Competitive Block Stacking</title>
+<title>It's Jedris</title>
+<meta name="application-name" content="It's Jedris">
+<meta name="apple-mobile-web-app-title" content="It's Jedris">
 <meta name="description" content="It's Jedris.">
 <meta name="theme-color" content="#04060d">
 <meta name="color-scheme" content="dark">
-<meta property="og:title" content="Jedris">
-<meta property="og:description" content="It's Jedris">
+<meta property="og:title" content="It's Jedris">
+<meta property="og:site_name" content="It's Jedris">
+<meta property="og:description" content="It's Jedris.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="assets/og-image.png">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
@@ -18,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=1.3.2">
+<link rel="stylesheet" href="css/style.css?v=1.4.0">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -29,7 +32,7 @@
   <div class="menu-body">
     <div class="menu-col">
       <h1 class="logo">JEDRIS</h1>
-      <p class="tagline">COMPETITIVE BLOCK STACKING</p>
+      <p class="tagline">IT'S JEDRIS</p>
       <button class="tile" data-mode="sprint" style="--c: var(--cyan)">
         <span><span class="t-name">40 LINES</span><span class="t-desc">Race to clear 40 lines</span></span>
         <span class="t-rec" id="rec-sprint"></span>
@@ -58,6 +61,9 @@
           <span><span class="t-name">CONFIG</span><span class="t-desc">Handling, keys and sound</span></span>
         </button>
       </div>
+      <button class="tile small" id="btn-leaderboard" style="--c: #f2d544">
+        <span><span class="t-name">LEADERBOARD</span><span class="t-desc">Most online match wins</span></span>
+      </button>
       <div id="touch-note" class="warn">On a phone? Tap a mode and play with the on-screen controller.</div>
       <div class="menu-foot">SOLO USES PLAYER 1 KEYS · <kbd>ESC</kbd> PAUSE</div>
     </div>
@@ -68,7 +74,7 @@
 <div id="welcome" class="screen dim hidden">
   <div class="panel" style="width:min(440px,100%)">
     <h1 class="logo small-logo">JEDRIS</h1>
-    <p class="tagline">COMPETITIVE BLOCK STACKING</p>
+    <p class="tagline">IT'S JEDRIS</p>
     <p class="lead center">Sign in with your DCISM ID to keep your name and personal bests, or jump straight in as a guest.</p>
     <div class="stack">
       <button id="btn-welcome-signin" class="primary">Sign In</button>
@@ -136,6 +142,15 @@
   </div>
 </div>
 
+<div id="leaderboard" class="screen dim hidden">
+  <div class="panel">
+    <h2 class="panel-title">Leaderboard<span class="sub">MOST ONLINE MATCH WINS</span></h2>
+    <div id="lb-body" class="lb-body"></div>
+    <p class="form-note" id="lb-note">Wins count when two signed-in players finish a best-of-3 online match.</p>
+    <div class="row" style="margin-top:18px"><button id="btn-lb-back" class="primary">Back</button></div>
+  </div>
+</div>
+
 <div id="help" class="screen dim hidden">
   <div class="panel wide">
     <h2 class="panel-title">How to Play<span class="sub">STACK · CLEAR · ATTACK</span></h2>
@@ -160,6 +175,9 @@
       <div class="atk"><span>T-Spin Double</span><b>4</b></div>
       <div class="atk"><span>T-Spin Triple</span><b>6</b></div>
       <div class="atk"><span>T-Spin Mini Double</span><b>1</b></div>
+      <div class="atk"><span>L/J/S/Z/I-Spin Single</span><b>1</b></div>
+      <div class="atk"><span>L/J/S/Z/I-Spin Double</span><b>3</b></div>
+      <div class="atk"><span>L/J/S/Z/I-Spin Triple</span><b>5</b></div>
       <div class="atk"><span>Back-to-back bonus</span><b>+1</b></div>
       <div class="atk"><span>Perfect clear</span><b>+10</b></div>
       <div class="atk"><span>Combo 2–3 / 4–5 / 6–7 / 8–10 / 11+</span><b>+1/2/3/4/5</b></div>
@@ -167,7 +185,8 @@
     <h3>Techniques</h3>
     <ul class="tips">
       <li><b>T-Spin:</b> rotate a T piece into a slot so that 3 of the 4 corners around its center are filled. If only one of the two corners it points toward is filled, it's a <em>Mini</em>.</li>
-      <li><b>Back-to-back:</b> chain quads and T-spin clears without a plain single/double/triple in between for +1 attack each.</li>
+      <li><b>L-Spin (and J, S, Z, I):</b> rotate the piece into a spot where it can't move left, right or up. Spin clears send extra garbage and keep back-to-back going.</li>
+      <li><b>Back-to-back:</b> chain quads and spin clears without a plain single/double/triple in between for +1 attack each.</li>
       <li><b>Combo:</b> clear lines with consecutive pieces. The longer the chain, the more garbage you send.</li>
       <li><b>Cancelling:</b> incoming garbage waits in the red meter beside your board for half a second. Clear lines to cancel it before it rises.</li>
       <li><b>Hold</b> swaps the current piece into storage once per piece. <b>Ghost</b> shows where the piece will land.</li>
@@ -207,7 +226,7 @@
 
 <div id="settings" class="screen dim hidden">
   <div class="panel wide">
-    <h2 class="panel-title">Config<span class="sub">SAVED AUTOMATICALLY TO THIS BROWSER</span></h2>
+    <h2 class="panel-title">Config<span class="sub" id="settings-sub">SAVED AUTOMATICALLY TO THIS BROWSER</span></h2>
     <h3>Handling</h3>
     <div id="handling"></div>
     <h3>Visuals &amp; Sound</h3>
@@ -268,16 +287,16 @@
   </div>
 </div>
 
-<script src="js/config.js?v=1.3.2"></script>
-<script src="js/pieces.js?v=1.3.2"></script>
-<script src="js/sound.js?v=1.3.2"></script>
-<script src="js/game.js?v=1.3.2"></script>
-<script src="js/input.js?v=1.3.2"></script>
-<script src="js/touch.js?v=1.3.2"></script>
-<script src="js/render.js?v=1.3.2"></script>
-<script src="js/ui.js?v=1.3.2"></script>
-<script src="js/account.js?v=1.3.2"></script>
-<script src="js/online.js?v=1.3.2"></script>
-<script src="js/main.js?v=1.3.2"></script>
+<script src="js/config.js?v=1.4.0"></script>
+<script src="js/pieces.js?v=1.4.0"></script>
+<script src="js/sound.js?v=1.4.0"></script>
+<script src="js/game.js?v=1.4.0"></script>
+<script src="js/input.js?v=1.4.0"></script>
+<script src="js/touch.js?v=1.4.0"></script>
+<script src="js/render.js?v=1.4.0"></script>
+<script src="js/ui.js?v=1.4.0"></script>
+<script src="js/account.js?v=1.4.0"></script>
+<script src="js/online.js?v=1.4.0"></script>
+<script src="js/main.js?v=1.4.0"></script>
 </body>
 </html>

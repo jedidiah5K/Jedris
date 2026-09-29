@@ -44,7 +44,7 @@ class RemoteGame extends Game {
     this.b2b = Number.isFinite(s.bb) ? s.bb : -1;
     this.lockTimer = Number(s.lt) || 0;
     if (Array.isArray(s.st)) {
-      [this.maxCombo, this.maxB2b, this.stats.quads, this.stats.tspins, this.stats.pcs] = s.st.map(n => n | 0);
+      [this.maxCombo, this.maxB2b, this.stats.quads, this.stats.spins, this.stats.pcs] = s.st.map(n => n | 0);
     }
     if (Array.isArray(s.fx)) for (const ev of s.fx.slice(0, 32)) if (ev && typeof ev.type === 'string') this.emit(ev);
     if (Array.isArray(s.pp)) for (const [text, color, big] of s.pp.slice(0, 8)) this.popup(String(text).slice(0, 24), String(color).slice(0, 9), !!big);
@@ -70,7 +70,7 @@ function snapshot(g) {
     i: g.incoming.map(x => [x.lines, Math.max(0, Math.round(x.readyAt - g.time))]),
     tm: Math.round(g.time), ph: g.phase, cd: Math.round(g.countdown),
     l: g.lines, sc: g.score, pc: g.pieces, at: g.attack, co: g.combo, bb: g.b2b, lt: Math.round(g.lockTimer),
-    st: [g.maxCombo, g.maxB2b, g.stats.quads, g.stats.tspins, g.stats.pcs],
+    st: [g.maxCombo, g.maxB2b, g.stats.quads, g.stats.spins, g.stats.pcs],
   };
   if (g.net.fx.length) { s.fx = g.net.fx; g.net.fx = []; }
   if (g.net.popups.length) { s.pp = g.net.popups; g.net.popups = []; }

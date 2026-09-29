@@ -59,6 +59,7 @@ class Store {
     return Object.values(this.data.users).find(u => u.username.toLowerCase() === n) || null;
   }
   user(id) { return this.data.users[id] || null; }
+  allUsers() { return Object.values(this.data.users); }
 
   addUser(fields) {
     const id = String(this.data.nextUserId++);

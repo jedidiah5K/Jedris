@@ -1,6 +1,6 @@
-# Jedris
+# It's Jedris
 
-**Competitive block stacking in your browser.** Jedris is a fast, modern falling-block game with guideline-accurate mechanics, a neon HUD, local versus, and real-time online versus.
+**It's Jedris.** Jedris is a fast, modern falling-block game with guideline-accurate mechanics, a neon HUD, local versus, and real-time online versus.
 
 The game itself is plain HTML, CSS and JavaScript with no build step, so it also runs straight from disk. A small Node.js server (Express + WebSockets) hosts it online and runs matchmaking.
 
@@ -58,7 +58,7 @@ The pad follows your DAS, ARR and soft drop settings. Local Versus is hidden on 
 - 500 ms lock delay that resets on move/rotate, with a maximum of 15 resets per piece
 - Configurable DAS, ARR (0 = instant), soft drop factor (including instant) and DAS cut on rotate; the last-pressed direction wins
 - Fixed 60 Hz simulation, independent of the display's refresh rate
-- T-spin and T-spin Mini detection (3-corner rule), back-to-back, combos and perfect clears
+- T-spin and T-spin Mini detection (3-corner rule), L/J/S/Z/I spins (piece rotated into a spot it can't leave), back-to-back, combos and perfect clears
 
 ### Attack table
 
@@ -75,7 +75,7 @@ Incoming garbage waits in the meter beside your board for 500 ms. Clearing lines
 
 ## Online versus
 
-Each player's browser simulates its own board with the same rules as offline play. The server relays each board 30 times a second (so you see your opponent live), forwards attacks as incoming garbage, and decides rounds when someone tops out. The 500 ms garbage delay also absorbs normal network latency.
+Each player's browser simulates its own board with the same rules as offline play. Both players get the same piece order each round (one shared seed from the server; garbage holes use a separate random stream so attacks never change it). The server relays each board 30 times a second (so you see your opponent live), forwards attacks as incoming garbage, and decides rounds when someone tops out. The 500 ms garbage delay also absorbs normal network latency.
 
 Protocol (JSON over a WebSocket at `<site>/ws`):
 
@@ -89,11 +89,13 @@ Protocol (JSON over a WebSocket at `<site>/ws`):
 
 ## Accounts
 
-Players can create an account with their DCISM ID (for example `s23105047`), a display name and a password of their own, or play as a guest. Signed-in players appear under their display name in online matches (guests can't borrow a registered name), and their 40 Lines and Blitz personal bests are saved to the account.
+Players can create an account with their DCISM ID (for example `s23105047`), a display name and a password of their own, or play as a guest. Signed-in players appear under their display name in online matches (guests can't borrow a registered name), and their 40 Lines and Blitz personal bests are saved to the account. Config (keys, handling, sound) is saved to the account too, so it follows you to any browser, including private tabs.
+
+The **Leaderboard** ranks players by online match wins. A win counts when two different signed-in accounts finish a best-of-3 online match; games against guests and matches someone leaves early don't count.
 
 Accounts live in `data/accounts.json` on the server (set `JEDRIS_DATA` to move it). Passwords are stored as scrypt hashes and sessions as SHA-256 hashes of random tokens. Nothing checks that a DCISM ID belongs to the person typing it, so the first person to register an ID owns it.
 
-Endpoints: `POST /api/auth/signup`, `/api/auth/login`, `/api/auth/password`, `/api/auth/logout`, `GET /api/auth/me` and `POST /api/records`. See `server/auth.js`.
+Endpoints: `POST /api/auth/signup`, `/api/auth/login`, `/api/auth/password`, `/api/auth/logout`, `GET /api/auth/me`, `POST /api/records`, `PUT /api/settings` and `GET /api/leaderboard`. See `server/auth.js`.
 
 To reset a forgotten password, stop the server first so it doesn't overwrite the change:
 

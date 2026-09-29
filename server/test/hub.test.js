@@ -45,6 +45,7 @@ test('room code: create, join, rounds, match end, rematch', () => {
   assert.equal(b.last('match').you, 1);
   assert.equal(a.last('round').round, 1);
   assert.equal(typeof b.last('round').seed, 'number');
+  assert.equal(a.last('round').seed, b.last('round').seed, 'both players get the same pieces');
   assert.equal(hub.rooms.size, 0);
 
   // relays

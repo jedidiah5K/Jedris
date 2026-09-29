@@ -7,7 +7,7 @@ const MODE_NAMES = { sprint: '40 Lines', blitz: 'Blitz', zen: 'Zen', versus: 'Lo
 const MODE_SUBS = { sprint: 'CLEAR 40 LINES', blitz: '2 MINUTE SCORE ATTACK', zen: 'ENDLESS', versus: '' };
 const MODE_ACCENTS = { sprint: '#38e8ff', blitz: '#ff9a3c', zen: '#4dff9a', versus: '#ff4fd8' };
 const $ = (id) => document.getElementById(id);
-const screens = ['menu', 'welcome', 'account', 'settings', 'help', 'online', 'pause', 'results'];
+const screens = ['menu', 'welcome', 'account', 'leaderboard', 'settings', 'help', 'online', 'pause', 'results'];
 function showScreen(id) { for (const s of screens) $(s).classList.toggle('hidden', s !== id); }
 
 const App = {
@@ -36,8 +36,9 @@ const App = {
     hideBanner();
     showScreen(null);
     if (this.mode === 'versus') {
-      const a = new Game({ mode: 'versus', seed: randomSeed(), name: 'P1' });
-      const b = new Game({ mode: 'versus', seed: randomSeed(), name: 'P2', sound: false });
+      const seed = randomSeed(); // both players get the same pieces
+      const a = new Game({ mode: 'versus', seed, name: 'P1' });
+      const b = new Game({ mode: 'versus', seed, name: 'P2', sound: false });
       a.sendGarbage = (n) => b.receiveGarbage(n);
       b.sendGarbage = (n) => a.receiveGarbage(n);
       this.games = [a, b];
@@ -251,7 +252,7 @@ function statRows(g) {
     ['Max combo', g.maxCombo],
     ['Max B2B', Math.max(0, g.maxB2b)],
     ['Quads', g.stats.quads],
-    ['T-spins', g.stats.tspins],
+    ['Spins', g.stats.spins],
     ['Perfect clears', g.stats.pcs],
   ];
 }
@@ -398,7 +399,13 @@ function toggleFullscreen() {
 /* ---------- wiring ---------- */
 document.querySelectorAll('[data-mode]').forEach(btn =>
   btn.addEventListener('click', () => App.start(btn.dataset.mode)));
-$('btn-settings').addEventListener('click', () => { Sound.unlock(); App.state = 'settings'; buildSettings(); showScreen('settings'); });
+$('btn-settings').addEventListener('click', () => {
+  Sound.unlock();
+  App.state = 'settings';
+  $('settings-sub').textContent = Account.signedIn() ? `SAVED TO YOUR ACCOUNT (${Account.user.username.toUpperCase()})` : 'SAVED AUTOMATICALLY TO THIS BROWSER';
+  buildSettings();
+  showScreen('settings');
+});
 $('btn-settings-back').addEventListener('click', () => { Input.capture = null; App.toMenu(); });
 $('btn-reset-settings').addEventListener('click', () => {
   Object.assign(settings, clone(DEFAULT_SETTINGS));

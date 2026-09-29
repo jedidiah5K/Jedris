@@ -23,7 +23,7 @@ class Hub {
    * @param {object} [opts]
    *   setTimeout/clearTimeout: injectable timers (tests)
    *   random: () => [0,1)
-   *   auth: { userForToken(token), isAccountName(name) } for signed-in players
+   *   auth: { userForToken(token), isAccountName(name), recordMatch(winnerId, loserId) } for signed-in players
    */
   constructor(opts = {}) {
     this.setTimeout = opts.setTimeout || setTimeout;
@@ -38,7 +38,7 @@ class Hub {
 
   /** Register a client. `send(obj)` delivers a message to it. */
   connect(send) {
-    const client = { id: this.nextId++, name: 'Player', guest: true, send, room: null, match: null, queued: false };
+    const client = { id: this.nextId++, name: 'Player', guest: true, userId: null, send, room: null, match: null, queued: false };
     this.clients.add(client);
     send({ t: 'welcome', id: client.id, online: this.clients.size });
     return client;
@@ -72,11 +72,13 @@ class Hub {
     if (user) {
       client.name = user.username;
       client.guest = false;
+      client.userId = user.id;
     } else {
       let name = cleanName(msg.name);
       if (this.auth && this.auth.isAccountName(name)) name = 'Guest';
       client.name = name;
       client.guest = true;
+      client.userId = null;
     }
     client.send({ t: 'hello', name: client.name, guest: client.guest });
   }
@@ -161,10 +163,8 @@ class Hub {
     m.round++;
     m.dead = [false, false];
     m.state = 'playing';
-    m.players.forEach((p, i) => p.send({
-      t: 'round', round: m.round, you: i, wins: m.wins.slice(),
-      seed: Math.floor(this.random() * 4294967296) >>> 0,
-    }));
+    const seed = Math.floor(this.random() * 4294967296) >>> 0; // same pieces for both players
+    m.players.forEach((p, i) => p.send({ t: 'round', round: m.round, you: i, wins: m.wins.slice(), seed }));
   }
 
   relayState(client, s) {
@@ -197,6 +197,7 @@ class Hub {
     if (decided) {
       m.state = 'over';
       m.rematch = [false, false];
+      if (this.auth && this.auth.recordMatch) this.auth.recordMatch(m.players[winner].userId, m.players[1 - winner].userId);
       for (const p of m.players) p.send({ t: 'matchEnd', winner, wins: m.wins.slice() });
     } else {
       m.timer = this.setTimeout(() => this.startRound(m), ROUND_BREAK_MS);

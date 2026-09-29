@@ -14,7 +14,9 @@ class Game {
   constructor(o = {}) {
     this.mode = o.mode || 'zen';
     this.name = o.name || '';
-    this.rng = mulberry32(o.seed ?? randomSeed());
+    const seed = o.seed ?? randomSeed();
+    this.rng = mulberry32(seed);                       // piece order only
+    this.garbageRng = mulberry32((seed ^ 0x9e3779b9) >>> 0); // garbage holes, so attacks never change the pieces
     this.sendGarbage = o.sendGarbage || null;
     this.soundOn = o.sound !== false;
 
@@ -38,7 +40,7 @@ class Game {
     this.b2b = -1;
     this.maxCombo = 0;
     this.maxB2b = 0;
-    this.stats = { quads: 0, tspins: 0, pcs: 0, garbageReceived: 0, garbageCancelled: 0 };
+    this.stats = { quads: 0, spins: 0, pcs: 0, garbageReceived: 0, garbageCancelled: 0 };
 
     this.incoming = []; // [{lines, hole, readyAt}]
 
@@ -242,10 +244,20 @@ class Game {
     this.spawn(next || undefined);
   }
 
-  /** 3-corner T-spin check. Returns null, 'mini' or 'full'. */
+  /**
+   * Spin check, done before the piece is written to the board.
+   * T: 3-corner rule, returns 'full' or 'mini'.
+   * L, J, S, Z, I: the piece was rotated into a spot it can't move out of
+   * (left, right or up), returns 'spin'. Otherwise null.
+   */
   detectSpin() {
     const p = this.piece;
-    if (p.type !== 'T' || !this.lastMoveRotate) return null;
+    if (!this.lastMoveRotate || p.type === 'O') return null;
+    if (p.type !== 'T') {
+      const stuck = this.collides(p.type, p.rot, p.x - 1, p.y) && this.collides(p.type, p.rot, p.x + 1, p.y)
+        && this.collides(p.type, p.rot, p.x, p.y - 1);
+      return stuck ? 'spin' : null;
+    }
     const cx = p.x + 1, cy = p.y + 1;
     const occ = (x, y) => x < 0 || x >= COLS || y < 0 || y >= ROWS || !!this.board[y][x];
     const corners = [occ(cx - 1, cy - 1), occ(cx + 1, cy - 1), occ(cx + 1, cy + 1), occ(cx - 1, cy + 1)]; // TL TR BR BL
@@ -257,10 +269,16 @@ class Game {
     return 'mini';
   }
 
+  /** Popup name for a spin, e.g. "T-SPIN MINI" or "L-SPIN". */
+  spinName(spin, type) {
+    return spin === 'mini' ? 'T-SPIN MINI' : `${type}-SPIN`;
+  }
+
   lock() {
     const p = this.piece;
-    for (const [cx, cy] of SHAPES[p.type].states[p.rot]) this.board[p.y + cy][p.x + cx] = p.type;
     const spin = this.detectSpin();
+    this.spinPiece = p.type;
+    for (const [cx, cy] of SHAPES[p.type].states[p.rot]) this.board[p.y + cy][p.x + cx] = p.type;
     this.emit({ type: 'lock', cells: this.pieceCells() });
     const rows = this.clearLines();
     this.piece = null;
@@ -281,8 +299,9 @@ class Game {
     if (n === 0) {
       this.combo = -1;
       if (spin) {
-        this.score += (spin === 'full' ? SCORE_TSPIN[0] : SCORE_TSPIN_MINI[0]) * lvl;
-        this.popup(spin === 'full' ? 'T-SPIN' : 'T-SPIN MINI', PIECE_COLORS.T);
+        this.score += SPIN_TABLES[spin].score[0] * lvl;
+        this.stats.spins++;
+        this.popup(this.spinName(spin, this.spinPiece), PIECE_COLORS[this.spinPiece]);
         this.emit({ type: 'spin' });
         this.sfx('spin');
       }
@@ -297,8 +316,7 @@ class Game {
     const b2bBonus = difficult && this.b2b >= 1;
 
     let atk, base;
-    if (spin === 'full') { atk = ATTACK_TSPIN[n]; base = SCORE_TSPIN[n]; this.stats.tspins++; }
-    else if (spin === 'mini') { atk = ATTACK_TSPIN_MINI[n]; base = SCORE_TSPIN_MINI[n]; this.stats.tspins++; }
+    if (spin) { atk = SPIN_TABLES[spin].attack[n]; base = SPIN_TABLES[spin].score[n]; this.stats.spins++; }
     else { atk = ATTACK_NORMAL[n]; base = SCORE_NORMAL[n]; }
     if (n === 4) this.stats.quads++;
     if (b2bBonus) { atk += ATTACK_B2B; base *= 1.5; }
@@ -315,8 +333,8 @@ class Game {
     this.lines += n;
 
     // Popups
-    const name = spin ? `T-SPIN ${spin === 'mini' ? 'MINI ' : ''}${CLEAR_NAMES[n]}` : CLEAR_NAMES[n];
-    this.popup(name, spin ? PIECE_COLORS.T : (n === 4 ? PIECE_COLORS.I : '#e6e9f2'));
+    const name = spin ? `${this.spinName(spin, this.spinPiece)} ${CLEAR_NAMES[n]}` : CLEAR_NAMES[n];
+    this.popup(name, spin ? PIECE_COLORS[this.spinPiece] : (n === 4 ? PIECE_COLORS.I : '#e6e9f2'));
     if (b2bBonus) this.popup(`B2B ×${this.b2b}`, '#f2d544');
     if (this.combo >= 1) this.popup(`${this.combo} COMBO`, '#6ee7c8');
     if (pc) this.popup('PERFECT CLEAR', '#ffd36e', true);
@@ -355,7 +373,7 @@ class Game {
   /* ---------- garbage ---------- */
   receiveGarbage(lines) {
     if (lines <= 0 || this.phase === 'over' || this.phase === 'done') return;
-    this.incoming.push({ lines, hole: Math.floor(this.rng() * COLS), readyAt: this.time + GARBAGE_DELAY });
+    this.incoming.push({ lines, hole: Math.floor(this.garbageRng() * COLS), readyAt: this.time + GARBAGE_DELAY });
     this.stats.garbageReceived += lines;
     this.emit({ type: 'garbage', lines });
     this.sfx('garbage');

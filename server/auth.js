@@ -12,6 +12,8 @@
  *   POST /api/auth/logout
  *   GET  /api/auth/me                                       -> {user}
  *   POST /api/records        {mode, value}                  -> {records}
+ *   PUT  /api/settings       {settings}                     -> {ok}
+ *   GET  /api/leaderboard                                   -> {players: [{username, wins, losses}]}
  * ========================================================================= */
 const crypto = require('crypto');
 const express = require('express');
@@ -22,6 +24,8 @@ const PASSWORD_MIN = 8;
 const PASSWORD_MAX = 128;
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const RECORD_MODES = { sprint: 'lower', blitz: 'higher' };
+const SETTINGS_MAX_BYTES = 4096;
+const LEADERBOARD_SIZE = 50;
 
 const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
 
@@ -44,7 +48,10 @@ function passwordError(password) {
 }
 
 function publicUser(u) {
-  return { id: u.id, username: u.username, dcismId: u.dcismId, records: u.records || {}, createdAt: u.createdAt };
+  return {
+    id: u.id, username: u.username, dcismId: u.dcismId, records: u.records || {},
+    wins: u.wins || 0, losses: u.losses || 0, settings: u.settings || null, createdAt: u.createdAt,
+  };
 }
 
 /** Very small fixed-window rate limiter keyed by client IP. */
@@ -92,6 +99,25 @@ class Auth {
   /** True when a guest name would pass for someone's account name. */
   isAccountName(name) {
     return !!this.store.userByName(String(name));
+  }
+
+  /** Counts a finished online match. Only matches between two different accounts count. */
+  recordMatch(winnerId, loserId) {
+    if (!winnerId || !loserId || winnerId === loserId) return;
+    const w = this.store.user(winnerId), l = this.store.user(loserId);
+    if (!w || !l) return;
+    w.wins = (w.wins || 0) + 1;
+    l.losses = (l.losses || 0) + 1;
+    this.store.updateUser(w);
+    this.store.updateUser(l);
+  }
+
+  leaderboard() {
+    return this.store.allUsers()
+      .filter(u => u.wins > 0)
+      .sort((a, b) => b.wins - a.wins || (a.losses || 0) - (b.losses || 0) || a.username.localeCompare(b.username))
+      .slice(0, LEADERBOARD_SIZE)
+      .map(u => ({ username: u.username, wins: u.wins, losses: u.losses || 0 }));
   }
 
   /* ---------- routes ---------- */
@@ -176,6 +202,22 @@ class Auth {
         this.store.updateUser(user);
       }
       res.json({ records: user.records });
+    }));
+
+    r.put('/settings', wrap(async (req, res) => {
+      const user = signedIn(req, res);
+      if (!user) return;
+      const settings = req.body.settings;
+      if (!settings || typeof settings !== 'object' || Array.isArray(settings) || JSON.stringify(settings).length > SETTINGS_MAX_BYTES) {
+        return res.status(400).json({ error: 'Bad settings.' });
+      }
+      user.settings = settings;
+      this.store.updateUser(user);
+      res.json({ ok: true });
+    }));
+
+    r.get('/leaderboard', wrap(async (req, res) => {
+      res.json({ players: this.leaderboard() });
     }));
 
     return r;

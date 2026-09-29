@@ -145,6 +145,15 @@ table.binds button.conflict { border-color: var(--danger); color: #ffb3c0; }
 .topbar-right { display: flex; align-items: center; gap: 18px; }
 button.chip { font-size: 12px; letter-spacing: 0.25em; padding: 6px 14px; }
 .tile-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.lb-body { max-height: min(56vh, 520px); overflow-y: auto; }
+table.lb { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+table.lb th { color: var(--muted); font-size: 12px; letter-spacing: 0.25em; text-align: left; padding: 6px 8px; }
+table.lb td { padding: 9px 8px; font-size: 17px; font-weight: 600; border-top: 1px solid rgba(255,255,255,0.06); }
+table.lb td:first-child { color: var(--muted); width: 3em; }
+table.lb td:nth-child(3) { color: #f2d544; }
+table.lb tr:nth-child(1) td:first-child { color: #f2d544; }
+table.lb tr.me td { background: rgba(56,232,255,0.08); }
+.lb-empty { color: var(--muted); padding: 18px 4px; text-align: center; }
 .tile-row .tile { margin-bottom: 12px; grid-template-columns: 1fr; }
 .site-foot { padding: 14px 36px; color: var(--muted); font-size: 12px; letter-spacing: 0.25em; font-weight: 600;
   border-top: 1px solid rgba(120,220,255,0.08); }

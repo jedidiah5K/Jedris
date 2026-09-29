@@ -67,6 +67,52 @@ function runJedrisSpec() {
     check('no spin without rotation last', g.detectSpin() === null);
   }
 
+  // L-spin: rotated into a spot it can't leave
+  {
+    const g = mk();
+    g.board = Game.emptyBoard();
+    const p = { type: 'L', rot: 0, x: 3, y: 19 };
+    const cells = SHAPES.L.states[0].map(([cx, cy]) => `${p.x + cx},${p.y + cy}`);
+    for (let y = 18; y < 22; y++) for (let x = 0; x < 10; x++) {
+      if (cells.includes(`${x},${y}`)) continue;
+      if ((y === 18 || y === 21) && x === 9) continue;
+      g.board[y][x] = 'G';
+    }
+    g.piece = { ...p };
+    g.lastMoveRotate = true;
+    check('L-spin detected when stuck', g.detectSpin() === 'spin');
+    g.lastMoveRotate = false;
+    check('no L-spin without rotation last', g.detectSpin() === null);
+    g.lastMoveRotate = true;
+    g.hardDrop();
+    check('L-spin double: 3 attack', g.attack === 3 && g.lines === 2, { attack: g.attack, lines: g.lines });
+    check('L-SPIN DOUBLE popup', g.popups.some(q => q.text === 'L-SPIN DOUBLE'), g.popups.map(q => q.text));
+    check('L-spin starts back-to-back', g.b2b === 0);
+    const free = mk();
+    free.board = Game.emptyBoard();
+    free.piece = { type: 'J', rot: 0, x: 3, y: 18 };
+    free.lastMoveRotate = true;
+    check('no spin when the piece can still move', free.detectSpin() === null);
+  }
+
+  // Same seed -> same pieces, even when only one side takes garbage
+  {
+    const a = new Game({ seed: 99, sound: false }), b = new Game({ seed: 99, sound: false });
+    b.receiveGarbage(4); b.receiveGarbage(2);
+    const seq = (g) => { const out = []; for (let i = 0; i < 50; i++) { out.push(g.queue.shift()); g.fillQueue(); } return out.join(''); };
+    check('garbage does not change the piece order', seq(a) === seq(b));
+  }
+
+  // Settings: old fast defaults move to the calmer ones, custom values stay
+  {
+    const old = mergeSettings({ das: 133, arr: 10 });
+    check('old default DAS/ARR migrate', old.das === DEFAULT_SETTINGS.das && old.arr === DEFAULT_SETTINGS.arr, old);
+    const mine = mergeSettings({ das: 133, arr: 10, v: 2 });
+    check('chosen DAS/ARR are kept', mine.das === 133 && mine.arr === 10);
+    const custom = mergeSettings({ das: 90, arr: 30, keys: { p1: { left: 'KeyJ', bogus: 1 } } });
+    check('custom handling and keys merge', custom.das === 90 && custom.keys.p1.left === 'KeyJ' && custom.keys.p1.right === 'KeyD' && !('bogus' in custom.keys.p1));
+  }
+
   // Wall kick: I piece next to wall
   {
     const g = mk();
