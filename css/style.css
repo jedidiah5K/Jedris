@@ -240,11 +240,10 @@ body.touch .menu-foot, body.touch #online .menu-foot { display: none; }
   transition: background .06s, box-shadow .06s, color .06s; pointer-events: none; }
 .pad-dpad .arm i { font-style: normal; font-size: calc(var(--pad) * 0.12); line-height: 1; }
 .pad-dpad .arm small { font-size: 9px; letter-spacing: 0.2em; font-weight: 700; color: var(--muted); }
-.pad-dpad .up { left: 32%; top: 0; border-radius: 10px 10px 0 0; border-bottom: none; }
 .pad-dpad .down { left: 32%; bottom: 0; border-radius: 0 0 10px 10px; border-top: none; }
 .pad-dpad .left { left: 0; top: 32%; border-radius: 10px 0 0 10px; border-right: none; }
 .pad-dpad .right { right: 0; top: 32%; border-radius: 0 10px 10px 0; border-left: none; }
-.pad-dpad .hub { left: 32%; top: 32%; border: none; background: #111a30; }
+.pad-dpad .hub { left: 32%; top: 32%; border: 1px solid var(--edge); border-width: 1px 0 0; background: #111a30; border-radius: 10px 10px 0 0; }
 .pad-dpad .hub::after { content: ""; width: 40%; height: 40%; border-radius: 50%; background: radial-gradient(circle, #1f2b4a, #0a0f1d); }
 .pad-dpad .arm.lit { background: linear-gradient(160deg, rgba(56,232,255,0.45), rgba(56,232,255,0.15)); color: #fff;
   box-shadow: 0 0 18px rgba(56,232,255,0.45); }
@@ -262,6 +261,15 @@ body.touch .menu-foot, body.touch #online .menu-foot { display: none; }
   background: radial-gradient(circle at 35% 30%, #ffd08f, #f08a24 60%, #7a3f08); box-shadow: 0 4px 0 #4d2805; }
 .pad-face .face.lit { transform: translateY(3px) scale(0.96); box-shadow: 0 1px 0 rgba(0,0,0,0.6), 0 0 22px rgba(255,255,255,0.35); filter: brightness(1.15); }
 
+/* hard drop: its own wide button, bottom centre between the d-pad and HOLD */
+.pad-drop { position: absolute; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  width: min(28vw, 132px); height: calc(var(--pad) * 0.26); min-height: 42px; padding: 0; clip-path: none; border-radius: 999px;
+  font-family: var(--display); font-weight: 900; font-size: 15px; letter-spacing: 0.25em; color: #fff; touch-action: none;
+  background: linear-gradient(180deg, #ff6b88, #d8264f); border: 2px solid rgba(255,255,255,0.14); box-shadow: 0 4px 0 #6d0f26;
+  transition: transform .05s, box-shadow .06s, filter .06s; }
+.pad-drop:hover { background: linear-gradient(180deg, #ff6b88, #d8264f); }
+.pad-drop.lit { transform: translateX(-50%) translateY(3px) scale(0.97); box-shadow: 0 1px 0 #6d0f26, 0 0 22px rgba(255,90,120,0.55); filter: brightness(1.15); }
+
 /* landscape phones: controller halves on either side of the board */
 @media (orientation: landscape) {
   #pad { --pad: min(34vh * 1.2, 24vw, 210px); top: 0; background: none; border: none; box-shadow: none; pointer-events: none;
@@ -271,6 +279,7 @@ body.touch .menu-foot, body.touch #online .menu-foot { display: none; }
   .pad-sys { grid-column: 1; justify-self: start; align-self: start; }
   .pad-dpad { grid-column: 1; grid-row: 2; justify-self: start; align-self: end; }
   .pad-face { grid-column: 2; grid-row: 2; justify-self: end; align-self: end; }
+  .pad-drop { left: calc(18px + env(safe-area-inset-left) + var(--pad) / 2); bottom: calc(18px + var(--pad) * 0.72); width: calc(var(--pad) * 0.8); }
 }
 body.touch #btn-fullscreen { display: none; }
 .account-chip { white-space: nowrap; }

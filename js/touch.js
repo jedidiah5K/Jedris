@@ -4,7 +4,8 @@
  * TOUCH CONTROLS
  * An on-screen controller for phones and tablets. Portrait puts the board on
  * top and the pad underneath; landscape splits the pad to either side.
- *   D-pad: left / right / soft drop, and hard drop (up) when a touch starts on it
+ *   D-pad: left / right / soft drop (no up: hard drop has its own button)
+ *   DROP: hard drop
  *   Face buttons: rotate CCW, rotate CW, rotate 180, hold
  * The pad feeds the same Game.input() events as the keyboard, so DAS, ARR and
  * soft drop speed follow the player's handling settings.
@@ -76,9 +77,7 @@ const Touch = {
       const dy = (e.clientY - (r.top + r.height / 2)) / r.height;
       if (Math.hypot(dx, dy) < 0.12) return starting ? null : this.held.get(e.pointerId) || null;
       if (Math.abs(dx) > Math.abs(dy)) return dx < 0 ? 'left' : 'right';
-      if (dy > 0) return 'soft';
-      // Hard drop only on a fresh tap, never by sliding up into it.
-      return starting ? 'hard' : this.held.get(e.pointerId) === 'hard' ? 'hard' : null;
+      return dy > 0 ? 'soft' : null; // nothing above the hub
     };
     el.addEventListener('pointerdown', (e) => {
       e.preventDefault();
