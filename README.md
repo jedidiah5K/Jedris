@@ -43,7 +43,8 @@ Some keyboards can't register many keys at once (ghosting). If inputs drop in ve
 
 On a touch screen an on-screen controller appears while you play. In portrait the board sits on top with the pad underneath; in landscape the pad splits to either side of the board.
 
-- **D-pad:** left / right move, down soft drops, and a tap on up hard drops. Slide your thumb between left, right and down; sliding never triggers a hard drop.
+- **D-pad:** left / right move and down soft drops. Slide your thumb between them.
+- **DROP** (the red button between the d-pad and HOLD): hard drop.
 - **Buttons:** ↺ rotate CCW, ↻ rotate CW, 180 rotate 180°, HOLD.
 - **MENU** pauses (or opens the match menu online) and **RETRY** restarts a solo run.
 

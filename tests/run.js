@@ -103,8 +103,16 @@ const url = (p) => 'file://' + path.join(root, p);
   await tp.waitForFunction(() => window.Jedris.App.games[0].phase === 'playing', null, { timeout: 10000 });
   const dpad = await tp.locator('#pad-dpad').boundingBox();
   await tp.touchscreen.tap(dpad.x + dpad.width / 2, dpad.y + dpad.height * 0.1);
+  await tp.waitForTimeout(150);
+  await check('touch: the d-pad has no hard drop', async () => (await tstate()).pieces === 0);
+  await tp.tap('#pad-drop');
   await tp.waitForFunction(() => window.Jedris.App.games[0].pieces === 1, null, { timeout: 2000 }).catch(() => {});
-  await check('touch: tapping up on the d-pad hard drops', async () => (await tstate()).pieces === 1);
+  await check('touch: DROP button hard drops', async () => (await tstate()).pieces === 1);
+  await check('touch: DROP sits between the d-pad and HOLD', () => tp.evaluate(() => {
+    const r = (id) => document.querySelector(id).getBoundingClientRect();
+    const d = r('#pad-drop'), arms = r('#pad-dpad .down'), hold = r('#pad-face .bottom');
+    return d.left >= arms.right && d.right <= hold.left && d.bottom <= innerHeight;
+  }));
   await tp.tap('#pad-face .bottom');
   await tp.waitForFunction(() => !!window.Jedris.App.games[0].holdPiece, null, { timeout: 2000 }).catch(() => {});
   await check('touch: hold button holds the piece', async () => !!(await tstate()).hold);
