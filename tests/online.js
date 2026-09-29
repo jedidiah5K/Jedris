@@ -187,6 +187,28 @@ const { createServer } = require('../server/index');
     await b.waitForFunction(() => window.Jedris.App.mode === 'online' && window.Jedris.App.state === 'playing');
     await check('quick match pairs two players', async () => (await game(a)).mode === 'online');
 
+    // Installable app: the service worker keeps a copy for offline play.
+    const appCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+    const app = await appCtx.newPage();
+    app.on('pageerror', e => errors.push(`app: ${e.message}`));
+    await app.goto(base);
+    await check('service worker installs', () => app.evaluate(async () => {
+      const reg = await Promise.race([navigator.serviceWorker.ready, new Promise(r => setTimeout(() => r(null), 5000))]);
+      return !!(reg && reg.active);
+    }));
+    await app.waitForTimeout(300);
+    await appCtx.setOffline(true);
+    await app.reload();
+    await app.waitForFunction(() => window.Jedris && window.Jedris.App, null, { timeout: 5000 }).catch(() => {});
+    await check('the game opens offline after one visit', () => app.evaluate(() => !!window.Jedris && typeof window.Jedris.App.start === 'function'));
+    if (await app.isVisible('#btn-welcome-guest')) await app.tap('#btn-welcome-guest');
+    await app.tap('[data-mode="sprint"]');
+    await check('solo modes play offline', async () => {
+      await app.waitForFunction(() => window.Jedris.App.state === 'playing', null, { timeout: 5000 });
+      return true;
+    });
+    await appCtx.close();
+
     await check('no page errors', async () => { if (errors.length) console.log(errors); return errors.length === 0; });
   } finally {
     await browser.close();

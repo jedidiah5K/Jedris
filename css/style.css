@@ -226,6 +226,9 @@ button.linkish:hover { color: var(--cyan); background: none; }
 
 /* ---------- touch controller ---------- */
 body.touch button { touch-action: manipulation; }
+html:has(body.touch) { touch-action: manipulation; }
+body.touch { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+body.touch input { -webkit-user-select: text; user-select: text; font-size: max(16px, 1em); } /* 16px stops iOS zooming into fields */
 #touch-note { display: none; }
 body.touch #touch-note { display: block; }
 body.touch .tile[data-mode="versus"] { display: none; } /* two players need one keyboard */

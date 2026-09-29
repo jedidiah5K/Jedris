@@ -24,5 +24,10 @@ setInterval(tickClock, 10000);
 requestAnimationFrame(frame);
 Account.init();
 
+// Installable app: keeps a copy of the game for offline play (only when served over http/https).
+if ('serviceWorker' in navigator && Account.available) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+
 // Exposed for automated tests and tinkering in the console.
 window.Jedris = { Game, App, Account, Online, Touch, SHAPES, KICKS_JLSTZ, KICKS_I, KICKS_180, settings, TICK_MS, comboAttack, gravityForLevel };

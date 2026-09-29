@@ -17,7 +17,7 @@ const { Auth } = require('./auth');
 
 const ROOT = path.resolve(__dirname, '..');
 const PUBLIC_DIRS = ['css', 'js', 'assets'];
-const PUBLIC_FILES = ['index.html', 'manifest.webmanifest'];
+const PUBLIC_FILES = ['index.html', 'manifest.webmanifest', 'sw.js'];
 const MAX_MSGS_PER_SEC = 120;
 const VERSION = require('../package.json').version;
 const DATA_FILE = process.env.JEDRIS_DATA || path.join(ROOT, 'data', 'accounts.json');
