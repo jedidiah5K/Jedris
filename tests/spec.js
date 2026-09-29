@@ -107,7 +107,9 @@ function runJedrisSpec() {
   {
     const old = mergeSettings({ das: 133, arr: 10 });
     check('old default DAS/ARR migrate', old.das === DEFAULT_SETTINGS.das && old.arr === DEFAULT_SETTINGS.arr, old);
-    const mine = mergeSettings({ das: 133, arr: 10, v: 2 });
+    const v2 = mergeSettings({ das: 120, arr: 120, v: 2 });
+    check('v2 default DAS/ARR migrate', v2.das === 167 && v2.arr === 33, v2);
+    const mine = mergeSettings({ das: 133, arr: 10, v: 3 });
     check('chosen DAS/ARR are kept', mine.das === 133 && mine.arr === 10);
     const custom = mergeSettings({ das: 90, arr: 30, keys: { p1: { left: 'KeyJ', bogus: 1 } } });
     check('custom handling and keys merge', custom.das === 90 && custom.keys.p1.left === 'KeyJ' && custom.keys.p1.right === 'KeyD' && !('bogus' in custom.keys.p1));
