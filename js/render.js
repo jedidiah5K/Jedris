@@ -739,7 +739,9 @@ function render(now = performance.now()) {
   // On a touch screen the opponent's board is drawn at a smaller scale beside yours.
   const oppScale = Touch.shown && n === 2 ? 0.46 : 1;
   const totalW = n === 1 ? UNIT_W : UNIT_W + (UNIT_GAP * oppScale) + UNIT_W * oppScale;
-  const s = Math.max(6, Math.floor(Math.min((W - 24) / totalW, (H - 24) / UNIT_H)));
+  // Phones need every pixel, so the margin is thinner and the cell size snaps to half pixels.
+  const m = Touch.shown ? 8 : 24;
+  const s = Math.max(6, Math.floor(Math.min((W - m) / totalW, (H - m) / UNIT_H) * 2) / 2);
   const x0 = AX + (W - totalW * s) / 2, y0 = Math.max(8, (H - UNIT_H * s) / 2);
   games.forEach((g, i) => {
     let header;

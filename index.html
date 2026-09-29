@@ -24,12 +24,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=1.6.0">
+<link rel="stylesheet" href="css/style.css?v=1.7.0">
 </head>
 <body>
 <canvas id="game"></canvas>
 
-<div id="menu" class="screen">
+<div id="menu" class="screen" data-view="main">
   <div class="topbar"><span><span class="dot"></span>JEDRIS // LOCAL NODE ONLINE</span>
     <span class="topbar-right"><span id="clock"></span><button id="btn-account" class="chip account-chip hidden" title="Your account"></button><button id="btn-fullscreen" class="chip" title="Toggle fullscreen">FULLSCREEN</button></span></div>
   <div class="menu-body">
@@ -46,18 +46,13 @@
           <span><span class="t-name">MULTIPLAYER</span><span class="t-desc">Online Versus · Local Versus · Leaderboard</span></span>
           <span class="t-rec"><small>LIVE</small>1V1</span>
         </button>
-        <button class="tile big" id="btn-help" style="--c: #ffd93d">
+        <button class="tile big" id="btn-help" style="--c: var(--yellow)">
           <span><span class="t-name">HOW TO PLAY</span><span class="t-desc">Controls, scoring and attacks</span></span>
           <span class="t-rec"></span>
         </button>
         <button class="tile big" id="btn-settings" style="--c: var(--violet)">
           <span><span class="t-name">CONFIG</span><span class="t-desc">Handling, keys and sound</span></span>
           <span class="t-rec"></span>
-        </button>
-        <button class="app-banner" id="btn-install">
-          <span class="app-ico" aria-hidden="true">⬇</span>
-          <span><b>ADD ME AS AN APP!</b><small>iPhone &amp; Android · home-screen icon · play solo offline</small></span>
-          <span class="app-go" aria-hidden="true">›</span>
         </button>
       </div>
 
@@ -76,7 +71,7 @@
           <span><span class="t-name">ZEN</span><span class="t-desc">Endless stacking, no game over</span></span>
           <span class="t-rec"></span>
         </button>
-        <button class="tile" id="btn-cpu" style="--c: #ff4d6a">
+        <button class="tile" id="btn-cpu" style="--c: var(--danger)">
           <span><span class="t-name">VS CPU</span><span class="t-desc">Battle a bot: Noob, Normal, Hard, Master, Legend</span></span>
           <span class="t-rec" id="rec-cpu"></span>
         </button>
@@ -92,7 +87,7 @@
       <!-- Multiplayer -->
       <div class="menu-view hidden" id="view-multi">
         <h2 class="view-title"><button class="back-btn" data-back aria-label="Back">‹</button>MULTIPLAYER</h2>
-        <button class="tile" id="btn-online" style="--c: #5b8cff">
+        <button class="tile" id="btn-online" style="--c: var(--blue)">
           <span><span class="t-name">ONLINE VERSUS</span><span class="t-desc">Battle anyone over the internet: quick match or room code</span></span>
           <span class="t-rec"><small>LIVE</small>1V1</span>
         </button>
@@ -100,20 +95,28 @@
           <span><span class="t-name">LOCAL VERSUS</span><span class="t-desc">Two players, one keyboard, best of 3</span></span>
           <span class="t-rec"></span>
         </button>
-        <button class="tile" id="btn-leaderboard" style="--c: #f2d544">
+        <button class="tile" id="btn-leaderboard" style="--c: var(--gold)">
           <span><span class="t-name">LEADERBOARD</span><span class="t-desc">Most online match wins</span></span>
           <span class="t-rec"></span>
         </button>
       </div>
-      <div id="touch-note" class="warn">On a phone? Pick a mode and play with the on-screen controller.</div>
+      <p id="touch-note" class="hint">Tap a mode to play with the on-screen controller.</p>
       <div class="menu-foot">SOLO USES PLAYER 1 KEYS · <kbd>ESC</kbd> PAUSE</div>
     </div>
   </div>
   <footer class="site-foot"><span id="version"></span> · <a href="https://github.com/jedidiah5K/Jedris" target="_blank" rel="noopener">SOURCE</a></footer>
+  <!-- Pinned to the bottom of the screen on the main menu -->
+  <div class="app-dock" id="app-dock">
+    <button class="app-banner" id="btn-install">
+      <span class="app-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></span>
+      <span><b>ADD ME AS AN APP!</b><small>iPhone &amp; Android · home-screen icon · play solo offline</small></span>
+      <span class="app-go" aria-hidden="true">›</span>
+    </button>
+  </div>
 </div>
 
 <div id="welcome" class="screen dim hidden">
-  <div class="panel" style="width:min(440px,100%)">
+  <div class="panel narrow">
     <h1 class="logo small-logo">JEDRIS</h1>
     <p class="tagline">IT'S JEDRIS</p>
     <p class="lead center">Sign in with your DCISM ID to keep your name and personal bests, or jump straight in as a guest.</p>
@@ -126,7 +129,7 @@
 </div>
 
 <div id="account" class="screen dim hidden">
-  <div class="panel" style="width:min(460px,100%)">
+  <div class="panel narrow">
     <form id="form-signin" class="acct-view" novalidate>
       <h2 class="panel-title">Sign In<span class="sub">WITH YOUR DCISM ACCOUNT</span></h2>
       <label class="field"><span>DCISM ID</span>
@@ -187,14 +190,14 @@
   <div class="panel">
     <h2 class="panel-title">Add Jedris as an app<span class="sub">FREE · NO APP STORE NEEDED</span></h2>
     <div class="install-perks">
-      <div><b>📴 Play offline</b>40 Lines, Blitz, Zen and VS CPU work with no internet.</div>
-      <div><b>📱 Full screen</b>Its own icon, no browser bars.</div>
-      <div><b>⚡ Always up to date</b>Updates itself when you're online.</div>
+      <div><svg class="perk-ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9a15 15 0 0 1 5-3M22 9a15 15 0 0 0-10-4M5 13a10 10 0 0 1 4-2.5M19 13a10 10 0 0 0-3-2M9 16.5a4 4 0 0 1 6 0"/><circle cx="12" cy="20" r="1"/><path d="M3 3l18 18"/></svg><span><b>Play offline</b>40 Lines, Blitz, Zen and VS CPU work with no internet.</span></div>
+      <div><svg class="perk-ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg><span><b>Full screen</b>Its own icon, no browser bars.</span></div>
+      <div><svg class="perk-ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg><span><b>Always up to date</b>Updates itself when you're online.</span></div>
     </div>
     <button id="btn-install-now" class="primary hidden">Install now</button>
     <div class="install-tabs" role="tablist">
-      <button id="tab-ios" class="chip" role="tab">iPHONE / iPAD</button>
-      <button id="tab-android" class="chip" role="tab">ANDROID</button>
+      <button id="tab-ios" class="chip" role="tab">iPhone / iPad</button>
+      <button id="tab-android" class="chip" role="tab">Android</button>
     </div>
     <ol class="install-steps" id="steps-ios">
       <li>Open <b id="install-url-ios">this page</b> in <b>Safari</b>.</li>
@@ -231,7 +234,7 @@
       <div class="help-card" style="--c: var(--cyan)"><b>40 Lines</b>Clear 40 lines as fast as possible. Your best time is saved.</div>
       <div class="help-card" style="--c: var(--orange)"><b>Blitz</b>Score as much as you can in 2 minutes. Gravity speeds up every 10 lines.</div>
       <div class="help-card" style="--c: var(--green)"><b>Zen</b>No timer, no game over. Topping out just wipes the board.</div>
-      <div class="help-card" style="--c: #5b8cff"><b>Online Versus</b>Real-time 1v1 over the internet. Quick match, or share a room code with a friend.</div>
+      <div class="help-card" style="--c: var(--blue)"><b>Online Versus</b>Real-time 1v1 over the internet. Quick match, or share a room code with a friend.</div>
       <div class="help-card" style="--c: var(--magenta)"><b>Local Versus</b>Two players on one keyboard. Attacks become garbage for the other side. First to 2 rounds wins.</div>
     </div>
     <h3>Controls</h3>
@@ -315,7 +318,7 @@
 </div>
 
 <div id="pause" class="screen dim hidden">
-  <div class="panel" style="width:min(380px,100%)">
+  <div class="panel narrow">
     <h2 class="panel-title" style="text-align:center" id="pause-title">Paused</h2>
     <div class="stack">
       <button id="btn-resume" class="primary">Resume</button>
@@ -358,17 +361,17 @@
   </div>
 </div>
 
-<script src="js/config.js?v=1.6.0"></script>
-<script src="js/pieces.js?v=1.6.0"></script>
-<script src="js/sound.js?v=1.6.0"></script>
-<script src="js/game.js?v=1.6.0"></script>
-<script src="js/input.js?v=1.6.0"></script>
-<script src="js/touch.js?v=1.6.0"></script>
-<script src="js/cpu.js?v=1.6.0"></script>
-<script src="js/render.js?v=1.6.0"></script>
-<script src="js/ui.js?v=1.6.0"></script>
-<script src="js/account.js?v=1.6.0"></script>
-<script src="js/online.js?v=1.6.0"></script>
-<script src="js/main.js?v=1.6.0"></script>
+<script src="js/config.js?v=1.7.0"></script>
+<script src="js/pieces.js?v=1.7.0"></script>
+<script src="js/sound.js?v=1.7.0"></script>
+<script src="js/game.js?v=1.7.0"></script>
+<script src="js/input.js?v=1.7.0"></script>
+<script src="js/touch.js?v=1.7.0"></script>
+<script src="js/cpu.js?v=1.7.0"></script>
+<script src="js/render.js?v=1.7.0"></script>
+<script src="js/ui.js?v=1.7.0"></script>
+<script src="js/account.js?v=1.7.0"></script>
+<script src="js/online.js?v=1.7.0"></script>
+<script src="js/main.js?v=1.7.0"></script>
 </body>
 </html>

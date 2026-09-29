@@ -311,6 +311,7 @@ const MENU_VIEWS = ['main', 'solo', 'cpu', 'multi'];
 const MENU_PARENT = { solo: 'main', multi: 'main', cpu: 'solo' };
 function showMenuView(view) {
   App.menuView = view;
+  $('menu').dataset.view = view; // the CSS shrinks the logo and pins the app banner by view
   for (const v of MENU_VIEWS) $(`view-${v}`).classList.toggle('hidden', v !== view);
   const first = $(`view-${view}`).querySelector('.tile, button');
   if (first && document.activeElement && document.activeElement !== document.body && !$('menu').contains(document.activeElement)) first.focus();
@@ -342,6 +343,8 @@ function showInstallTab(which) {
   $('steps-android').classList.toggle('hidden', which !== 'android');
   $('tab-ios').classList.toggle('on', which === 'ios');
   $('tab-android').classList.toggle('on', which === 'android');
+  $('tab-ios').setAttribute('aria-selected', which === 'ios');
+  $('tab-android').setAttribute('aria-selected', which === 'android');
 }
 function openInstall() {
   Sound.unlock();
@@ -365,7 +368,7 @@ $('btn-install-now').addEventListener('click', async () => {
   installPrompt = null;
   $('btn-install-now').classList.add('hidden');
 });
-if (isInstalled()) $('btn-install').classList.add('hidden');
+if (isInstalled()) $('app-dock').classList.add('hidden');
 
 /* ---------- how to play ---------- */
 function buildHelp() {
