@@ -24,12 +24,12 @@ const ACTIONS = ['left', 'right', 'soft', 'hard', 'ccw', 'cw', 'r180', 'hold'];
 const ACTION_LABELS = { left: 'Move left', right: 'Move right', soft: 'Soft drop', hard: 'Hard drop',
   ccw: 'Rotate CCW', cw: 'Rotate CW', r180: 'Rotate 180°', hold: 'Hold' };
 
-const VERSION = '1.4.0';
+const VERSION = '1.4.1';
 const REPO_URL = 'https://github.com/jedidiah5K/Jedris';
 const PREFERS_REDUCED_MOTION = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const DEFAULT_SETTINGS = {
-  das: 120, arr: 120, sdf: 20, sdfInstant: false, dasCut: false,
+  das: 167, arr: 33, sdf: 20, sdfInstant: false, dasCut: false,
   ghost: true, shake: !PREFERS_REDUCED_MOTION, flash: true, sound: true, volume: 0.5,
   keys: {
     p1: { left: 'KeyA', right: 'KeyD', soft: 'KeyS', hard: 'KeyW', ccw: 'KeyQ', cw: 'KeyE', r180: 'KeyR', hold: 'ShiftLeft' },
@@ -43,16 +43,18 @@ const RECORDS_KEY = 'jedris.records.v1';
 
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
 
-const SETTINGS_VERSION = 2;
+const SETTINGS_VERSION = 3;
 
 /** Copies saved values over a fresh copy of the defaults, ignoring anything unknown. */
 function mergeSettings(saved) {
   const s = clone(DEFAULT_SETTINGS);
   if (!saved || typeof saved !== 'object') return s;
   saved = { ...saved };
-  // v1 shipped with a very fast auto-repeat (DAS 133 / ARR 10). Players who never
-  // changed it get the calmer, steady default instead.
-  if (!(saved.v >= 2) && saved.das === 133 && saved.arr === 10) { delete saved.das; delete saved.arr; }
+  // Earlier versions shipped other auto-repeat defaults (v1: DAS 133 / ARR 10,
+  // v2: 120 / 120). Players who never changed them get the current default.
+  const oldDefault = (!(saved.v >= 2) && saved.das === 133 && saved.arr === 10)
+    || (!(saved.v >= 3) && saved.das === 120 && saved.arr === 120);
+  if (oldDefault) { delete saved.das; delete saved.arr; }
   for (const k of Object.keys(s)) if (k !== 'keys' && k in saved && typeof saved[k] === typeof s[k]) s[k] = saved[k];
   if (saved.keys && typeof saved.keys === 'object') {
     for (const p of ['p1', 'p2']) {
