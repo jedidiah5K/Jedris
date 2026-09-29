@@ -85,6 +85,44 @@ const url = (p) => 'file://' + path.join(root, p);
   await page.click('#btn-reset-settings');
 
   if (errors.length) fail('page errors: ' + JSON.stringify(errors)); else pass('no page errors');
+
+  // 3) Touch controller on a phone-sized screen
+  const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const tp = await phone.newPage();
+  const touchErrors = [];
+  tp.on('pageerror', e => touchErrors.push(e.message));
+  await tp.goto(url('index.html'));
+  const tstate = () => tp.evaluate(() => {
+    const g = window.Jedris.App.games[0];
+    return { pieces: g && g.pieces, hold: g && g.holdPiece, paused: window.Jedris.App.paused };
+  });
+  await check('touch: local versus is hidden on phones', async () => !(await tp.isVisible('[data-mode="versus"]')));
+  await tp.tap('[data-mode="sprint"]');
+  await tp.waitForFunction(() => !document.getElementById('pad').classList.contains('hidden'), null, { timeout: 2000 }).catch(() => {});
+  await check('touch: pad appears in game', () => tp.isVisible('#pad-dpad'));
+  await tp.waitForFunction(() => window.Jedris.App.games[0].phase === 'playing', null, { timeout: 10000 });
+  const dpad = await tp.locator('#pad-dpad').boundingBox();
+  await tp.touchscreen.tap(dpad.x + dpad.width / 2, dpad.y + dpad.height * 0.1);
+  await tp.waitForFunction(() => window.Jedris.App.games[0].pieces === 1, null, { timeout: 2000 }).catch(() => {});
+  await check('touch: tapping up on the d-pad hard drops', async () => (await tstate()).pieces === 1);
+  await tp.tap('#pad-face .bottom');
+  await tp.waitForFunction(() => !!window.Jedris.App.games[0].holdPiece, null, { timeout: 2000 }).catch(() => {});
+  await check('touch: hold button holds the piece', async () => !!(await tstate()).hold);
+  // Swap in a T so the rotation is visible whatever the bag dealt.
+  await tp.evaluate(() => { const g = window.Jedris.App.games[0]; g.piece = { type: 'T', rot: 0, x: 3, y: g.piece.y }; });
+  await tp.tap('#pad-face .right');
+  await tp.waitForFunction(() => window.Jedris.App.games[0].piece.rot === 1, null, { timeout: 2000 }).catch(() => {});
+  await check('touch: rotate button rotates', () => tp.evaluate(() => window.Jedris.App.games[0].piece.rot === 1));
+  await check('touch: board fits above the pad', () => tp.evaluate(() => {
+    const L = window.Jedris.App.games[0]._L;
+    return L.by + L.bh <= document.getElementById('pad').getBoundingClientRect().top;
+  }));
+  await tp.tap('#pad-menu');
+  await tp.waitForFunction(() => document.getElementById('pad').classList.contains('hidden'), null, { timeout: 2000 }).catch(() => {});
+  await check('touch: menu button pauses and hides the pad', async () => (await tstate()).paused && !(await tp.isVisible('#pad')));
+  if (touchErrors.length) fail('touch page errors: ' + JSON.stringify(touchErrors)); else pass('touch: no page errors');
+  await phone.close();
+
   await browser.close();
   console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL TESTS PASSED');
   process.exit(failures ? 1 : 0);

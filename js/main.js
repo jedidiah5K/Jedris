@@ -10,11 +10,13 @@ function frame(now) {
     App.tick();
     accumulator -= TICK_MS;
   }
+  Touch.sync();
   render(now);
   requestAnimationFrame(frame);
 }
 
 Input.init();
+Touch.init();
 updateRecords();
 const tickClock = () => { $('clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
 tickClock();
@@ -23,4 +25,4 @@ requestAnimationFrame(frame);
 Account.init();
 
 // Exposed for automated tests and tinkering in the console.
-window.Jedris = { Game, App, Account, Online, SHAPES, KICKS_JLSTZ, KICKS_I, KICKS_180, settings, TICK_MS, comboAttack, gravityForLevel };
+window.Jedris = { Game, App, Account, Online, Touch, SHAPES, KICKS_JLSTZ, KICKS_I, KICKS_180, settings, TICK_MS, comboAttack, gravityForLevel };

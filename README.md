@@ -39,6 +39,16 @@ All keys can be rebound in **Config**. Solo modes use the Player 1 keys.
 
 Some keyboards can't register many keys at once (ghosting). If inputs drop in versus, try binding keys that are further apart.
 
+### Phones and tablets
+
+On a touch screen an on-screen controller appears while you play. In portrait the board sits on top with the pad underneath; in landscape the pad splits to either side of the board.
+
+- **D-pad:** left / right move, down soft drops, and a tap on up hard drops. Slide your thumb between left, right and down; sliding never triggers a hard drop.
+- **Buttons:** ↺ rotate CCW, ↻ rotate CW, 180 rotate 180°, HOLD.
+- **MENU** pauses (or opens the match menu online) and **RETRY** restarts a solo run.
+
+The pad follows your DAS, ARR and soft drop settings. Local Versus is hidden on touch screens because it needs a shared keyboard. In Online Versus the opponent's board is drawn smaller beside yours.
+
 ## Mechanics
 
 - 10×20 playfield with 2 hidden rows above it
@@ -102,6 +112,7 @@ js/pieces.js            Piece shapes, SRS kick tables, scoring/attack tables, RN
 js/sound.js             Synthesized sound effects (Web Audio, no audio files)
 js/game.js              Game class: board logic, handling, spins, garbage (one per player)
 js/input.js             Keyboard → per-player actions
+js/touch.js             On-screen controller for phones and tablets
 js/render.js            Canvas renderer, HUD and visual effects
 js/ui.js                App flow, menus, settings and keybind editor
 js/account.js           Sign in, sign up, guest mode and saved personal bests
