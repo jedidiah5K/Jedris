@@ -732,22 +732,29 @@ function render(now = performance.now()) {
   const games = App.games;
   drawBackground(t, games.length > 0);
   if (!games.length) return;
-  const W = VIEW_W, H = VIEW_H;
+  // Fit the boards into whatever the touch controller leaves free.
+  const ins = Touch.insets();
+  const AX = ins.left, W = VIEW_W - ins.left - ins.right, H = VIEW_H - ins.bottom;
   const n = games.length;
-  const totalW = n * UNIT_W + (n - 1) * UNIT_GAP;
+  // On a touch screen the opponent's board is drawn at a smaller scale beside yours.
+  const oppScale = Touch.shown && n === 2 ? 0.46 : 1;
+  const totalW = n === 1 ? UNIT_W : UNIT_W + (UNIT_GAP * oppScale) + UNIT_W * oppScale;
   const s = Math.max(6, Math.floor(Math.min((W - 24) / totalW, (H - 24) / UNIT_H)));
-  const x0 = (W - totalW * s) / 2, y0 = (H - UNIT_H * s) / 2;
+  const x0 = AX + (W - totalW * s) / 2, y0 = Math.max(8, (H - UNIT_H * s) / 2);
   games.forEach((g, i) => {
     let header;
     if (App.mode === 'versus') header = { name: `PLAYER ${i + 1}`, wins: App.wins[i], accent: ACCENTS[i] };
     else if (App.mode === 'online') {
-      const name = i === 0 ? (Online.player.name || 'YOU') : Online.opponentName();
+      const name = i === 0 ? (Online.myName || Online.player.name || 'YOU') : Online.opponentName();
       header = { name: name.toUpperCase(), wins: App.wins[i], accent: ACCENTS[i] };
     } else header = { name: MODE_NAMES[App.mode].toUpperCase(), sub: MODE_SUBS[App.mode], accent: MODE_ACCENTS[App.mode] };
-    drawPlayer(g, { x: x0 + i * (UNIT_W + UNIT_GAP) * s, y: y0, s }, header, t, dt);
+    const L = i === 0 || oppScale === 1
+      ? { x: x0 + i * (UNIT_W + UNIT_GAP) * s, y: y0, s }
+      : { x: x0 + (UNIT_W + UNIT_GAP * oppScale) * s, y: y0, s: s * oppScale };
+    drawPlayer(g, L, header, t, dt);
   });
-  if (App.mode === 'versus' || App.mode === 'online') {
-    const cx = W / 2, cy = y0 + (BOARD_Y + 10) * s;
+  if ((App.mode === 'versus' || App.mode === 'online') && oppScale === 1) {
+    const cx = AX + W / 2, cy = y0 + (BOARD_Y + 10) * s;
     drawCenterText('VS', cx, cy, s * 1.3, '#9a6bff', s * 3, 0.9);
     setFont(700, s * 0.45, FONT_U, s * 0.3);
     ctx.fillStyle = '#7f8ea8';

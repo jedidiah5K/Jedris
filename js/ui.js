@@ -423,7 +423,6 @@ $('btn-help-back').addEventListener('click', () => App.toMenu());
 $('btn-fullscreen').addEventListener('click', toggleFullscreen);
 document.querySelectorAll('.tile').forEach(t => t.addEventListener('mouseenter', () => Sound.play('move')));
 $('version').textContent = `v${VERSION}`;
-if (matchMedia('(hover: none) and (pointer: coarse)').matches) $('touch-note').classList.remove('hidden');
 $('btn-resume').addEventListener('click', () => App.setPaused(false));
 $('btn-restart').addEventListener('click', () => App.start(App.mode));
 $('btn-quit').addEventListener('click', () => App.toMenu());

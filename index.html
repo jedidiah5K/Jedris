@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jedris — Competitive Block Stacking</title>
 <meta name="description" content="It's Jedris.">
 <meta name="theme-color" content="#04060d">
@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=1.2.1">
+<link rel="stylesheet" href="css/style.css?v=1.3.0">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -58,7 +58,7 @@
           <span><span class="t-name">CONFIG</span><span class="t-desc">Handling, keys and sound</span></span>
         </button>
       </div>
-      <div id="touch-note" class="warn hidden">Jedris is played with a keyboard. Connect one, or open this page on a computer.</div>
+      <div id="touch-note" class="warn">On a phone? Tap a mode and play with the on-screen controller.</div>
       <div class="menu-foot">SOLO USES PLAYER 1 KEYS · <kbd>ESC</kbd> PAUSE</div>
     </div>
   </div>
@@ -251,15 +251,36 @@
 
 <div id="banner" class="banner hidden"></div>
 
-<script src="js/config.js?v=1.2.1"></script>
-<script src="js/pieces.js?v=1.2.1"></script>
-<script src="js/sound.js?v=1.2.1"></script>
-<script src="js/game.js?v=1.2.1"></script>
-<script src="js/input.js?v=1.2.1"></script>
-<script src="js/render.js?v=1.2.1"></script>
-<script src="js/ui.js?v=1.2.1"></script>
-<script src="js/account.js?v=1.2.1"></script>
-<script src="js/online.js?v=1.2.1"></script>
-<script src="js/main.js?v=1.2.1"></script>
+<div id="pad" class="hidden" aria-label="Touch controls">
+  <div class="pad-sys">
+    <button id="pad-menu" class="pad-pill" aria-label="Pause">MENU</button>
+    <button id="pad-retry" class="pad-pill hidden" aria-label="Retry">RETRY</button>
+  </div>
+  <div id="pad-dpad" class="pad-dpad" role="group" aria-label="Move and drop">
+    <span class="arm up" data-lit="hard"><i>▲</i><small>DROP</small></span>
+    <span class="arm left" data-lit="left"><i>◀</i></span>
+    <span class="arm right" data-lit="right"><i>▶</i></span>
+    <span class="arm down" data-lit="soft"><i>▼</i><small>SOFT</small></span>
+    <span class="hub"></span>
+  </div>
+  <div id="pad-face" class="pad-face" role="group" aria-label="Rotate and hold">
+    <button class="face top" data-act="r180" data-lit="r180" aria-label="Rotate 180">180</button>
+    <button class="face left" data-act="ccw" data-lit="ccw" aria-label="Rotate counterclockwise">↺</button>
+    <button class="face right" data-act="cw" data-lit="cw" aria-label="Rotate clockwise">↻</button>
+    <button class="face bottom" data-act="hold" data-lit="hold" aria-label="Hold">HOLD</button>
+  </div>
+</div>
+
+<script src="js/config.js?v=1.3.0"></script>
+<script src="js/pieces.js?v=1.3.0"></script>
+<script src="js/sound.js?v=1.3.0"></script>
+<script src="js/game.js?v=1.3.0"></script>
+<script src="js/input.js?v=1.3.0"></script>
+<script src="js/touch.js?v=1.3.0"></script>
+<script src="js/render.js?v=1.3.0"></script>
+<script src="js/ui.js?v=1.3.0"></script>
+<script src="js/account.js?v=1.3.0"></script>
+<script src="js/online.js?v=1.3.0"></script>
+<script src="js/main.js?v=1.3.0"></script>
 </body>
 </html>
