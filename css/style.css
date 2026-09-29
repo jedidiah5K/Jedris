@@ -221,65 +221,54 @@ body.touch button { touch-action: manipulation; }
 body.touch #touch-note { display: block; }
 body.touch .tile[data-mode="versus"] { display: none; } /* two players need one keyboard */
 body.touch .menu-foot, body.touch #online .menu-foot { display: none; }
-#pad { --pad: min(42vw, 200px, 30vh); position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
-  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr; align-items: center; justify-items: center;
-  padding: 10px 14px calc(14px + env(safe-area-inset-bottom)); gap: 4px 10px;
-  background: linear-gradient(180deg, rgba(10,16,30,0.92), rgba(4,6,13,0.98));
-  border-top: 1px solid var(--edge); box-shadow: 0 -10px 40px rgba(56,232,255,0.08);
-  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+/* Portrait: one slim row under the board. Left thumb moves, right thumb rotates,
+   DROP sits in the middle. Pause and retry live in the top corners. */
+#pad { --u: min(64px, calc((100vw - 60px) / 5)); position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  display: grid; grid-template-columns: auto 1fr auto; align-items: stretch; gap: 10px;
+  padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(8,12,24,0.88), rgba(4,6,13,0.97));
+  border-top: 1px solid var(--edge); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 #pad::before { content: ""; position: absolute; left: 0; top: -1px; width: 140px; height: 2px;
-  background: linear-gradient(90deg, var(--cyan), transparent); }
-.pad-sys { grid-column: 1 / -1; display: flex; gap: 12px; justify-content: center; }
-.pad-pill { font-size: 11px; letter-spacing: 0.3em; padding: 6px 16px; border-radius: 999px; min-height: 30px;
-  background: rgba(0,0,0,0.35); color: var(--muted); clip-path: none; }
-.pad-pill:active { color: var(--cyan); border-color: var(--cyan); }
+  background: linear-gradient(90deg, var(--cyan), transparent); pointer-events: none; }
+.pad-move, .pad-rot { display: grid; grid-template-columns: var(--u) var(--u); grid-auto-rows: var(--u); gap: 8px; touch-action: none; }
+.pad-move .wide { grid-column: 1 / -1; }
 
-.pad-dpad { position: relative; width: var(--pad); height: var(--pad); touch-action: none; }
-.pad-dpad .arm, .pad-dpad .hub { position: absolute; width: 36%; height: 36%; display: grid; place-items: center;
-  background: linear-gradient(160deg, #1b2440, #0b1122); border: 1px solid var(--edge); color: #b9c8e6;
-  transition: background .06s, box-shadow .06s, color .06s; pointer-events: none; }
-.pad-dpad .arm i { font-style: normal; font-size: calc(var(--pad) * 0.12); line-height: 1; }
-.pad-dpad .arm small { font-size: 9px; letter-spacing: 0.2em; font-weight: 700; color: var(--muted); }
-.pad-dpad .down { left: 32%; bottom: 0; border-radius: 0 0 10px 10px; border-top: none; }
-.pad-dpad .left { left: 0; top: 32%; border-radius: 10px 0 0 10px; border-right: none; }
-.pad-dpad .right { right: 0; top: 32%; border-radius: 0 10px 10px 0; border-left: none; }
-.pad-dpad .hub { left: 32%; top: 32%; border: 1px solid var(--edge); border-width: 1px 0 0; background: #111a30; border-radius: 10px 10px 0 0; }
-.pad-dpad .hub::after { content: ""; width: 40%; height: 40%; border-radius: 50%; background: radial-gradient(circle, #1f2b4a, #0a0f1d); }
-.pad-dpad .arm.lit { background: linear-gradient(160deg, rgba(56,232,255,0.45), rgba(56,232,255,0.15)); color: #fff;
-  box-shadow: 0 0 18px rgba(56,232,255,0.45); }
+.pbtn { position: relative; display: grid; place-items: center; align-content: center; gap: 1px; padding: 0; margin: 0;
+  clip-path: none; border-radius: 16px; border: 1px solid rgba(140,200,255,0.18);
+  background: linear-gradient(180deg, rgba(34,46,78,0.9), rgba(16,22,40,0.95));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 3px 0 rgba(0,0,0,0.45);
+  color: #cfdcf5; font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: 0.05em; line-height: 1;
+  touch-action: none; pointer-events: none; transition: transform .05s, background .06s, box-shadow .06s; }
+button.pbtn { pointer-events: auto; }
+.pbtn small { font-family: var(--ui); font-size: 10px; letter-spacing: 0.3em; color: var(--muted); font-weight: 700; }
+.pbtn.hold, .pbtn.r180 { font-size: 13px; letter-spacing: 0.15em; }
+.pbtn.hold { color: #ffc27a; border-color: rgba(255,154,60,0.45); }
+.pbtn.r180 { color: #c9a8ff; border-color: rgba(154,107,255,0.5); }
+.pbtn.ccw { color: #ff8fe2; border-color: rgba(255,79,216,0.5); font-size: 28px; }
+.pbtn.cw { color: #8ff0ff; border-color: rgba(56,232,255,0.55); font-size: 28px; }
+.pbtn.drop { color: #fff; font-size: 12px; letter-spacing: 0.3em; border: none; border-radius: 18px;
+  background: linear-gradient(180deg, #45e6ff, #8a5cff); box-shadow: 0 4px 0 #3b2477, 0 0 24px rgba(90,160,255,0.25); }
+.pbtn.drop b { font-size: 30px; letter-spacing: 0; }
+.pbtn.lit { transform: translateY(2px); background: linear-gradient(180deg, rgba(56,232,255,0.4), rgba(56,232,255,0.14));
+  box-shadow: 0 1px 0 rgba(0,0,0,0.5), 0 0 18px rgba(56,232,255,0.4); color: #fff; }
+.pbtn.drop.lit { background: linear-gradient(180deg, #7af0ff, #a57dff); box-shadow: 0 1px 0 #3b2477, 0 0 30px rgba(120,180,255,0.6); }
 
-.pad-face { position: relative; width: var(--pad); height: var(--pad); }
-.pad-face .face { position: absolute; width: 38%; height: 38%; border-radius: 50%; clip-path: none; padding: 0;
-  display: grid; place-items: center; font-family: var(--display); font-weight: 900; letter-spacing: 0.04em;
-  font-size: calc(var(--pad) * 0.13); color: #fff; touch-action: none;
-  border: 2px solid rgba(255,255,255,0.12); transition: transform .05s, box-shadow .06s, filter .06s; }
-.pad-face .top { left: 31%; top: 0; font-size: calc(var(--pad) * 0.09);
-  background: radial-gradient(circle at 35% 30%, #c8a6ff, #7a4be6 60%, #3d2380); box-shadow: 0 4px 0 #26164f; }
-.pad-face .left { left: 0; top: 31%; background: radial-gradient(circle at 35% 30%, #ff9be9, #e0359f 60%, #7a1557); box-shadow: 0 4px 0 #4d0e37; }
-.pad-face .right { right: 0; top: 31%; background: radial-gradient(circle at 35% 30%, #9cf6ff, #1fb8d6 60%, #0b5a70); box-shadow: 0 4px 0 #083a49; }
-.pad-face .bottom { left: 31%; bottom: 0; font-size: calc(var(--pad) * 0.075);
-  background: radial-gradient(circle at 35% 30%, #ffd08f, #f08a24 60%, #7a3f08); box-shadow: 0 4px 0 #4d2805; }
-.pad-face .face.lit { transform: translateY(3px) scale(0.96); box-shadow: 0 1px 0 rgba(0,0,0,0.6), 0 0 22px rgba(255,255,255,0.35); filter: brightness(1.15); }
+.pad-corner { position: fixed; top: calc(10px + env(safe-area-inset-top)); width: 40px; height: 40px; padding: 0; clip-path: none;
+  border-radius: 12px; font-size: 14px; letter-spacing: 0; color: var(--muted); background: rgba(8,12,24,0.7); }
+.pad-corner.left { left: 12px; }
+.pad-corner.right { right: 12px; font-size: 20px; }
+.pad-corner:active { color: var(--cyan); border-color: var(--cyan); }
 
-/* hard drop: its own wide button, bottom centre between the d-pad and HOLD */
-.pad-drop { position: absolute; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%);
-  width: min(28vw, 132px); height: calc(var(--pad) * 0.26); min-height: 42px; padding: 0; clip-path: none; border-radius: 999px;
-  font-family: var(--display); font-weight: 900; font-size: 15px; letter-spacing: 0.25em; color: #fff; touch-action: none;
-  background: linear-gradient(180deg, #ff6b88, #d8264f); border: 2px solid rgba(255,255,255,0.14); box-shadow: 0 4px 0 #6d0f26;
-  transition: transform .05s, box-shadow .06s, filter .06s; }
-.pad-drop:hover { background: linear-gradient(180deg, #ff6b88, #d8264f); }
-.pad-drop.lit { transform: translateX(-50%) translateY(3px) scale(0.97); box-shadow: 0 1px 0 #6d0f26, 0 0 22px rgba(255,90,120,0.55); filter: brightness(1.15); }
-
-/* landscape phones: controller halves on either side of the board */
+/* Landscape: the two clusters sit either side of the board, DROP above the move keys. */
 @media (orientation: landscape) {
-  #pad { --pad: min(34vh * 1.2, 24vw, 210px); top: 0; background: none; border: none; box-shadow: none; pointer-events: none;
-    grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr; padding: 12px calc(18px + env(safe-area-inset-right)) 18px calc(18px + env(safe-area-inset-left)); }
+  #pad { --u: min(72px, 15vh); top: 0; background: none; border: none; pointer-events: none;
+    grid-template-columns: auto 1fr auto; grid-template-rows: 1fr auto auto; align-items: end;
+    padding: 12px calc(20px + env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left)); }
   #pad::before { display: none; }
   #pad > * { pointer-events: auto; }
-  .pad-sys { grid-column: 1; justify-self: start; align-self: start; }
-  .pad-dpad { grid-column: 1; grid-row: 2; justify-self: start; align-self: end; }
-  .pad-face { grid-column: 2; grid-row: 2; justify-self: end; align-self: end; }
-  .pad-drop { left: calc(18px + env(safe-area-inset-left) + var(--pad) / 2); bottom: calc(18px + var(--pad) * 0.72); width: calc(var(--pad) * 0.8); }
+  .pad-move { grid-column: 1; grid-row: 3; }
+  .pad-rot { grid-column: 3; grid-row: 3; }
+  #pad-drop { grid-column: 1; grid-row: 2; height: var(--u); }
 }
 body.touch #btn-fullscreen { display: none; }
 .account-chip { white-space: nowrap; }

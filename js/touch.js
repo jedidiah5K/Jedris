@@ -4,9 +4,10 @@
  * TOUCH CONTROLS
  * An on-screen controller for phones and tablets. Portrait puts the board on
  * top and the pad underneath; landscape splits the pad to either side.
- *   D-pad: left / right / soft drop (no up: hard drop has its own button)
- *   DROP: hard drop
- *   Face buttons: rotate CCW, rotate CW, rotate 180, hold
+ *   Move keys: ◀ ▶ and ▼ (soft drop), one slide-able zone for the left thumb
+ *   DROP: hard drop, in the middle
+ *   Rotate keys: hold, 180, ↺ (CCW), ↻ (CW) for the right thumb
+ *   Corners: pause and (in solo modes) retry
  * The pad feeds the same Game.input() events as the keyboard, so DAS, ARR and
  * soft drop speed follow the player's handling settings.
  * ========================================================================= */
@@ -69,23 +70,20 @@ const Touch = {
     el.addEventListener('lostpointercapture', up);
   },
 
-  /** One zone for the whole D-pad so a thumb can slide between directions. */
+  /** One zone for the move keys (◀ ▶ on top, ▼ below) so a thumb can slide between them. */
   bindDpad(el) {
-    const dirAt = (e, starting) => {
+    const dirAt = (e) => {
       const r = el.getBoundingClientRect();
-      const dx = (e.clientX - (r.left + r.width / 2)) / r.width;
-      const dy = (e.clientY - (r.top + r.height / 2)) / r.height;
-      if (Math.hypot(dx, dy) < 0.12) return starting ? null : this.held.get(e.pointerId) || null;
-      if (Math.abs(dx) > Math.abs(dy)) return dx < 0 ? 'left' : 'right';
-      return dy > 0 ? 'soft' : null; // nothing above the hub
+      if ((e.clientY - r.top) / r.height >= 0.5) return 'soft';
+      return e.clientX - r.left < r.width / 2 ? 'left' : 'right';
     };
     el.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       el.setPointerCapture(e.pointerId);
-      this.press(e.pointerId, dirAt(e, true));
+      this.press(e.pointerId, dirAt(e));
     });
     el.addEventListener('pointermove', (e) => {
-      if (this.held.has(e.pointerId) || el.hasPointerCapture(e.pointerId)) this.press(e.pointerId, dirAt(e, false));
+      if (this.held.has(e.pointerId)) this.press(e.pointerId, dirAt(e));
     });
     const up = (e) => this.release(e.pointerId);
     el.addEventListener('pointerup', up);
@@ -109,7 +107,7 @@ const Touch = {
   insets() {
     if (!this.shown) return { left: 0, right: 0, bottom: 0 };
     if (innerWidth > innerHeight) {
-      const side = Math.max($('pad-dpad').offsetWidth, $('pad-face').offsetWidth) + 28;
+      const side = Math.max($('pad-dpad').offsetWidth, $('pad-face').offsetWidth) + 36;
       return { left: side, right: side, bottom: 0 };
     }
     return { left: 0, right: 0, bottom: $('pad').offsetHeight };

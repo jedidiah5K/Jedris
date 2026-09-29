@@ -101,24 +101,40 @@ const url = (p) => 'file://' + path.join(root, p);
   await tp.waitForFunction(() => !document.getElementById('pad').classList.contains('hidden'), null, { timeout: 2000 }).catch(() => {});
   await check('touch: pad appears in game', () => tp.isVisible('#pad-dpad'));
   await tp.waitForFunction(() => window.Jedris.App.games[0].phase === 'playing', null, { timeout: 10000 });
-  const dpad = await tp.locator('#pad-dpad').boundingBox();
-  await tp.touchscreen.tap(dpad.x + dpad.width / 2, dpad.y + dpad.height * 0.1);
-  await tp.waitForTimeout(150);
-  await check('touch: the d-pad has no hard drop', async () => (await tstate()).pieces === 0);
-  await tp.tap('#pad-drop');
-  await tp.waitForFunction(() => window.Jedris.App.games[0].pieces === 1, null, { timeout: 2000 }).catch(() => {});
-  await check('touch: DROP button hard drops', async () => (await tstate()).pieces === 1);
-  await check('touch: DROP sits between the d-pad and HOLD', () => tp.evaluate(() => {
-    const r = (id) => document.querySelector(id).getBoundingClientRect();
-    const d = r('#pad-drop'), arms = r('#pad-dpad .down'), hold = r('#pad-face .bottom');
-    return d.left >= arms.right && d.right <= hold.left && d.bottom <= innerHeight;
+  await check('touch: every control is on top where it is drawn', () => tp.evaluate(() => {
+    const ids = ['#pad-drop', '[data-act=hold]', '[data-act=r180]', '[data-act=ccw]', '[data-act=cw]', '#pad-menu'];
+    return ids.every((sel) => {
+      const el = document.querySelector(sel), r = el.getBoundingClientRect();
+      return [[0.1, 0.5], [0.5, 0.5], [0.9, 0.5], [0.5, 0.1], [0.5, 0.9]].every(([fx, fy]) =>
+        el.contains(document.elementFromPoint(r.left + r.width * fx, r.top + r.height * fy)));
+    }) && ['left', 'right', 'soft'].every((a) => {
+      const r = document.querySelector(`[data-lit=${a}]`).getBoundingClientRect();
+      return document.getElementById('pad-dpad').contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
+    });
   }));
-  await tp.tap('#pad-face .bottom');
+  for (const f of [0.15, 0.5, 0.85]) {
+    const before = (await tstate()).pieces;
+    const d = await tp.locator('#pad-drop').boundingBox();
+    await tp.touchscreen.tap(d.x + d.width * f, d.y + d.height / 2);
+    await tp.waitForFunction((n) => window.Jedris.App.games[0].pieces === n + 1, before, { timeout: 2000 }).catch(() => {});
+    await check(`touch: DROP hard drops when tapped at ${Math.round(f * 100)}% across`, async () => (await tstate()).pieces === before + 1);
+  }
+  const x0 = (await tp.evaluate(() => window.Jedris.App.games[0].piece.x));
+  const lb = await tp.locator('[data-lit=left]').boundingBox();
+  await tp.touchscreen.tap(lb.x + lb.width / 2, lb.y + lb.height / 2);
+  await tp.waitForFunction((x) => window.Jedris.App.games[0].piece.x === x - 1, x0, { timeout: 2000 }).catch(() => {});
+  await check('touch: ◀ moves left', () => tp.evaluate((x) => window.Jedris.App.games[0].piece.x === x - 1, x0));
+  await check('touch: DROP sits between the move and rotate keys', () => tp.evaluate(() => {
+    const r = (id) => document.getElementById(id).getBoundingClientRect();
+    const d = r('pad-drop'), m = r('pad-dpad'), f = r('pad-face');
+    return d.left >= m.right && d.right <= f.left && d.bottom <= innerHeight;
+  }));
+  await tp.tap('[data-act=hold]');
   await tp.waitForFunction(() => !!window.Jedris.App.games[0].holdPiece, null, { timeout: 2000 }).catch(() => {});
   await check('touch: hold button holds the piece', async () => !!(await tstate()).hold);
   // Swap in a T so the rotation is visible whatever the bag dealt.
   await tp.evaluate(() => { const g = window.Jedris.App.games[0]; g.piece = { type: 'T', rot: 0, x: 3, y: g.piece.y }; });
-  await tp.tap('#pad-face .right');
+  await tp.tap('[data-act=cw]');
   await tp.waitForFunction(() => window.Jedris.App.games[0].piece.rot === 1, null, { timeout: 2000 }).catch(() => {});
   await check('touch: rotate button rotates', () => tp.evaluate(() => window.Jedris.App.games[0].piece.rot === 1));
   await check('touch: board fits above the pad', () => tp.evaluate(() => {
