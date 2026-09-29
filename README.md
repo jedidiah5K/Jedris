@@ -50,6 +50,15 @@ On a touch screen an on-screen controller appears while you play. In portrait th
 
 The pad follows your DAS, ARR and soft drop settings. Local Versus is hidden on touch screens because it needs a shared keyboard. In Online Versus the opponent's board is drawn smaller beside yours.
 
+### Install it as an app
+
+Jedris is an installable web app: it gets its own home-screen icon, opens full screen without the browser bars, and keeps a copy of the game so 40 Lines, Blitz, Zen and Local Versus work offline (Online Versus, accounts and the leaderboard need a connection). It updates itself whenever it's opened online.
+
+- **iPhone / iPad (Safari):** open the site, tap Share, then **Add to Home Screen**.
+- **Android (Chrome):** open the site, tap ⋮, then **Install app** (or **Add to Home screen**).
+
+A native App Store or sideloaded iOS build isn't included: installing one outside the App Store needs a Mac with Xcode and an Apple developer account, and free builds expire after 7 days.
+
 ## Mechanics
 
 - 10×20 playfield with 2 hidden rows above it
@@ -121,6 +130,7 @@ js/ui.js                App flow, menus, settings and keybind editor
 js/account.js           Sign in, sign up, guest mode and saved personal bests
 js/online.js            Online versus client: lobby, networking, opponent board mirror
 js/main.js              Fixed-timestep main loop
+sw.js                   Service worker: offline copy for the installable app
 server/index.js         Node server: static files, /api/health, WebSocket endpoint
 server/hub.js           Matchmaking, rooms, rounds and relays
 server/auth.js          Accounts: sign-up, login, sessions, records

@@ -24,9 +24,26 @@ const Touch = {
     this.bindDpad($('pad-dpad'));
     $('pad-menu').addEventListener('click', () => { this.releaseAll(); App.onEscape(); });
     $('pad-retry').addEventListener('click', () => { this.releaseAll(); if (App.mode && App.mode !== 'versus' && App.mode !== 'online') App.start(App.mode); });
-    // Keep the page from scrolling or zooming under a thumb.
-    pad.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
-    canvas.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+    // Keep the page from scrolling or zooming under a thumb. Safari ignores
+    // touch-action for double-tap zoom and shows its magnifier on long presses,
+    // so the controls cancel the touch itself (pointer events still fire).
+    const stop = e => { if (e.cancelable) e.preventDefault(); };
+    for (const el of [$('pad-dpad'), $('pad-face'), $('pad-drop'), canvas]) {
+      el.addEventListener('touchstart', stop, { passive: false });
+      el.addEventListener('touchend', stop, { passive: false });
+    }
+    pad.addEventListener('touchmove', stop, { passive: false });
+    canvas.addEventListener('touchmove', stop, { passive: false });
+    pad.addEventListener('dblclick', stop);
+    // Safari's own pinch-zoom events.
+    for (const type of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(type, stop, { passive: false });
+    // Double tapping anywhere else during a game (e.g. beside the pad) mustn't zoom either.
+    let lastEnd = 0;
+    document.addEventListener('touchend', (e) => {
+      const now = e.timeStamp;
+      if (this.shown && now - lastEnd < 350 && e.cancelable && !e.target.closest('button, a, input, textarea, select')) e.preventDefault();
+      lastEnd = now;
+    }, { passive: false });
   },
 
   enable() {
