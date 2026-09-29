@@ -46,6 +46,21 @@ const url = (p) => 'file://' + path.join(root, p);
   await page.keyboard.press('Escape');
   await check('esc returns to menu', () => visible('menu'));
 
+  await check('menu has four main cards and the app banner', () => page.evaluate(() =>
+    ['btn-solo', 'btn-multi', 'btn-help', 'btn-settings', 'btn-install'].every(id => !!document.getElementById(id).offsetParent)));
+  await page.click('#btn-install');
+  await check('app banner opens install steps', async () => (await visible('install')) && (await page.textContent('#steps-ios')).includes('Add to Home Screen'));
+  await page.click('#tab-android');
+  await check('android install steps', async () => (await page.isVisible('#steps-android')) && (await page.textContent('#steps-android')).includes('Install app'));
+  await page.keyboard.press('Escape');
+  await page.click('#btn-solo');
+  await check('solo lists 40 lines, blitz, zen and vs cpu', async () =>
+    (await page.isVisible('[data-mode="sprint"]')) && (await page.isVisible('[data-mode="zen"]')) && (await page.isVisible('#btn-cpu')));
+  await page.keyboard.press('Escape');
+  await check('esc goes back to the main cards', () => page.isVisible('#btn-solo'));
+  await page.click('#btn-multi');
+  await check('multiplayer lists online, local and leaderboard', async () =>
+    (await page.isVisible('#btn-online')) && (await page.isVisible('[data-mode="versus"]')) && (await page.isVisible('#btn-leaderboard')));
   await page.click('#btn-leaderboard');
   await page.waitForFunction(() => !document.querySelector('#lb-body').textContent.includes('Loading'));
   await check('leaderboard opens (and explains it needs the server offline)', async () =>
@@ -53,6 +68,7 @@ const url = (p) => 'file://' + path.join(root, p);
   await page.keyboard.press('Escape');
   await check('tab title is "It\'s Jedris"', async () => (await page.title()) === "It's Jedris");
 
+  await page.evaluate(() => showMenuView('multi'));
   await page.click('[data-mode="versus"]');
   await page.waitForFunction(() => window.Jedris.App.games.every(g => g.phase === 'playing'), null, { timeout: 10000 }); // countdown
   await page.keyboard.press('KeyW');
@@ -77,6 +93,7 @@ const url = (p) => 'file://' + path.join(root, p);
 
   await page.keyboard.press('Escape');
   await page.click('#btn-quit');
+  await page.evaluate(() => showMenuView('solo'));
   await page.click('[data-mode="sprint"]');
   await page.waitForFunction(() => window.Jedris.App.games.every(g => g.phase === 'playing'), null, { timeout: 10000 }); // countdown
   for (let i = 0; i < 6; i++) { await page.keyboard.press(i % 2 ? 'KeyA' : 'KeyD'); await page.keyboard.press('KeyW'); }
@@ -87,6 +104,26 @@ const url = (p) => 'file://' + path.join(root, p);
   await page.keyboard.press('Escape');
   await check('esc pauses', async () => (await state()).paused && (await visible('pause')));
   await page.click('#btn-quit');
+
+  // VS CPU
+  await page.evaluate(() => showMenuView('solo'));
+  await page.click('#btn-cpu');
+  await check('vs cpu shows five levels', () => page.evaluate(() =>
+    [...document.querySelectorAll('#cpu-levels .t-name')].map(e => e.textContent).join() === 'NOOB,NORMAL,HARD,MASTER,LEGEND'));
+  await page.click('#cpu-levels .tile[data-level="4"]');
+  await page.waitForFunction(() => window.Jedris.App.games[1] && window.Jedris.App.games[1].pieces >= 3, null, { timeout: 12000 }).catch(() => {});
+  await check('the cpu plays by itself', () => page.evaluate(() => window.Jedris.App.mode === 'cpu' && window.Jedris.App.games[1].pieces >= 3));
+  await page.evaluate(() => window.Jedris.App.games[1].topOut());
+  await page.waitForFunction(() => window.Jedris.App.round === 2, null, { timeout: 6000 }).catch(() => {});
+  await check('vs cpu: beating the cpu wins the round', async () => { const s = await state(); return s.round === 2 && s.wins[0] === 1; });
+  await page.evaluate(() => window.Jedris.App.games[1].topOut());
+  await page.waitForFunction(() => window.Jedris.App.state === 'results', null, { timeout: 6000 }).catch(() => {});
+  await check('vs cpu: victory screen and record saved', async () => (await page.textContent('#res-big')) === 'VICTORY' &&
+    (await page.evaluate(() => JSON.parse(localStorage.getItem('jedris.records.v1')).cpu === 4)));
+  await page.keyboard.press('Escape');
+  await check('back on the level list after the match', () => page.isVisible('#cpu-levels'));
+  await check('beaten level is marked', async () => (await page.textContent('#rec-cpu')).includes('LEGEND'));
+  await page.evaluate(() => showMenuView('main'));
 
   await page.click('#btn-settings');
   await page.click('#binds tr:nth-child(2) td:nth-child(2) button');
@@ -107,7 +144,9 @@ const url = (p) => 'file://' + path.join(root, p);
     const g = window.Jedris.App.games[0];
     return { pieces: g && g.pieces, hold: g && g.holdPiece, paused: window.Jedris.App.paused };
   });
+  await tp.evaluate(() => showMenuView('multi'));
   await check('touch: local versus is hidden on phones', async () => !(await tp.isVisible('[data-mode="versus"]')));
+  await tp.evaluate(() => showMenuView('solo'));
   await tp.tap('[data-mode="sprint"]');
   await tp.waitForFunction(() => !document.getElementById('pad').classList.contains('hidden'), null, { timeout: 2000 }).catch(() => {});
   await check('touch: pad appears in game', () => tp.isVisible('#pad-dpad'));

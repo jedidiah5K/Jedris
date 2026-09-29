@@ -23,7 +23,7 @@ const Touch = {
     for (const btn of pad.querySelectorAll('[data-act]')) this.bindButton(btn, btn.dataset.act);
     this.bindDpad($('pad-dpad'));
     $('pad-menu').addEventListener('click', () => { this.releaseAll(); App.onEscape(); });
-    $('pad-retry').addEventListener('click', () => { this.releaseAll(); if (App.mode && App.mode !== 'versus' && App.mode !== 'online') App.start(App.mode); });
+    $('pad-retry').addEventListener('click', () => { this.releaseAll(); if (App.mode && !App.isLocalMatch() && App.mode !== 'online') App.start(App.mode); });
     // Keep the page from scrolling or zooming under a thumb. Safari ignores
     // touch-action for double-tap zoom and shows its magnifier on long presses,
     // so the controls cancel the touch itself (pointer events still fire).
@@ -116,7 +116,7 @@ const Touch = {
       $('pad').classList.toggle('hidden', !show);
       if (!show) this.releaseAll();
     }
-    const solo = App.mode && App.mode !== 'versus' && App.mode !== 'online';
+    const solo = App.mode && !App.isLocalMatch() && App.mode !== 'online';
     $('pad-retry').classList.toggle('hidden', !solo);
   },
 

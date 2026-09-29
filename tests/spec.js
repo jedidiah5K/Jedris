@@ -115,6 +115,21 @@ function runJedrisSpec() {
     check('custom handling and keys merge', custom.das === 90 && custom.keys.p1.left === 'KeyJ' && custom.keys.p1.right === 'KeyD' && !('bogus' in custom.keys.p1));
   }
 
+  // CPU opponent: plays legal moves, clears lines, and higher levels are faster
+  {
+    const played = CPU_LEVELS.map(lvl => {
+      const g = new Game({ mode: 'versus', countdownMs: 0, sound: false, seed: 11 });
+      const cpu = new CpuPlayer(g, lvl, () => 0.5);
+      for (let t = 0; t < 60 * 30; t++) { cpu.update(TICK_MS); g.tick(); }
+      return g;
+    });
+    check('every cpu level survives 30s on its own', played.every(g => g.phase === 'playing'), played.map(g => g.phase));
+    check('every cpu level clears lines', played.every(g => g.lines > 0), played.map(g => g.lines));
+    check('higher cpu levels place pieces faster', played.every((g, i) => i === 0 || g.pieces > played[i - 1].pieces), played.map(g => g.pieces));
+    const noob = played[0], legend = played[4];
+    check('noob is about 0.5 pieces/sec, legend over 3', noob.pieces / 30 < 0.8 && legend.pieces / 30 > 3, [noob.pieces, legend.pieces]);
+  }
+
   // Wall kick: I piece next to wall
   {
     const g = mk();

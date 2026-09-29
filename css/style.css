@@ -288,3 +288,61 @@ body.touch #btn-fullscreen { display: none; }
   .topbar > span:first-child, #clock { display: none; }
   .topbar { justify-content: flex-end; }
 }
+
+/* ---------- menu views & cards ---------- */
+.menu-view { animation: fadeIn .25s ease-out; }
+.tile.big { padding-top: 26px; padding-bottom: 26px; }
+.tile.big .t-name { font-size: 30px; }
+.view-title { display: flex; align-items: center; gap: 14px; margin: 0 0 18px; font-family: var(--display); font-weight: 900;
+  font-size: 30px; letter-spacing: 0.16em; color: #fff; }
+.back-btn { width: 46px; height: 46px; padding: 0; font-size: 28px; line-height: 1; letter-spacing: 0; flex: none; }
+.view-note { margin: -6px 0 16px; color: var(--muted); font-size: 15px; letter-spacing: 0.06em; font-weight: 600; }
+
+/* The "Add me as an app!" banner: meant to be noticed. */
+.app-banner { position: relative; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px;
+  width: 100%; margin: 8px 0 4px; padding: 18px 22px; text-align: left; letter-spacing: 0.04em; text-transform: none;
+  border: 1px solid transparent; border-radius: 14px; color: #fff; overflow: hidden;
+  background: linear-gradient(var(--bg), var(--bg)) padding-box,
+              linear-gradient(90deg, var(--cyan), var(--violet), var(--magenta), var(--cyan)) border-box;
+  background-size: 100% 100%, 300% 100%; animation: appGlow 4s linear infinite;
+  box-shadow: 0 0 22px rgba(154,107,255,0.35), inset 0 0 30px rgba(56,232,255,0.08); }
+.app-banner b { display: block; font-family: var(--display); font-weight: 900; font-size: 20px; letter-spacing: 0.12em;
+  background: linear-gradient(90deg, var(--cyan), var(--magenta)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.app-banner small { display: block; margin-top: 3px; color: #c9d4ea; font-size: 14px; font-weight: 600; letter-spacing: 0.05em; }
+.app-ico { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 12px; font-size: 24px;
+  background: linear-gradient(135deg, var(--cyan), var(--violet)); color: #04060d; font-weight: 900;
+  animation: appBob 1.6s ease-in-out infinite; }
+.app-go { font-size: 34px; color: var(--cyan); }
+.app-banner:hover { box-shadow: 0 0 34px rgba(154,107,255,0.6), inset 0 0 30px rgba(56,232,255,0.12); transform: translateY(-2px); }
+@keyframes appGlow { to { background-position: 0 0, 300% 0; } }
+@keyframes appBob { 50% { transform: translateY(3px); } }
+@media (prefers-reduced-motion: reduce) { .app-banner, .app-ico { animation: none; } }
+
+/* Install instructions */
+.install-perks { display: grid; gap: 8px; margin: 4px 0 16px; }
+.install-perks div { padding: 10px 14px; border: 1px solid var(--edge); border-radius: 10px; background: var(--glass-2);
+  color: #c9d4ea; font-size: 15px; font-weight: 600; }
+.install-perks b { display: block; color: #fff; font-size: 16px; letter-spacing: 0.04em; }
+.install-tabs { display: flex; gap: 8px; margin: 6px 0 12px; }
+.install-tabs .chip { flex: 1; }
+.install-tabs .chip.on { border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 12px rgba(56,232,255,0.35); }
+.install-steps { margin: 0; padding-left: 24px; display: grid; gap: 10px; font-size: 17px; font-weight: 600; color: #dfe8f7; }
+.install-steps b { color: var(--cyan); }
+.kbdish { display: inline-block; padding: 0 7px; border: 1px solid var(--edge-hi); border-radius: 6px; font-size: 14px; }
+#btn-install-now { width: 100%; margin-bottom: 12px; }
+@media (max-width: 640px) {
+  .tile.big { padding-top: 16px; padding-bottom: 16px; margin-bottom: 10px; }
+  .tile.big .t-name { font-size: 22px; }
+  .tile.big .t-desc { font-size: 14px; }
+  .tile.big .t-rec { display: none; }
+  .tile.big { grid-template-columns: 1fr; }
+  .app-banner { padding: 14px 16px; gap: 12px; }
+  .app-banner b { font-size: 17px; }
+  .app-banner small { font-size: 13px; }
+  .app-ico { width: 40px; height: 40px; font-size: 20px; }
+  .view-title { font-size: 24px; }
+}
+@media (max-width: 640px) and (max-height: 900px) {
+  #menu .logo { font-size: 44px; }
+  #menu .tagline { margin: 4px 0 16px 4px; }
+}

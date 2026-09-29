@@ -744,6 +744,10 @@ function render(now = performance.now()) {
   games.forEach((g, i) => {
     let header;
     if (App.mode === 'versus') header = { name: `PLAYER ${i + 1}`, wins: App.wins[i], accent: ACCENTS[i] };
+    else if (App.mode === 'cpu') {
+      const lvl = App.cpuLevel || CPU_LEVELS[1];
+      header = { name: i === 0 ? 'YOU' : `CPU · ${lvl.name}`, wins: App.wins[i], accent: i === 0 ? ACCENTS[0] : lvl.color };
+    }
     else if (App.mode === 'online') {
       const name = i === 0 ? (Online.myName || Online.player.name || 'YOU') : Online.opponentName();
       header = { name: name.toUpperCase(), wins: App.wins[i], accent: ACCENTS[i] };
@@ -753,7 +757,7 @@ function render(now = performance.now()) {
       : { x: x0 + (UNIT_W + UNIT_GAP * oppScale) * s, y: y0, s: s * oppScale };
     drawPlayer(g, L, header, t, dt);
   });
-  if ((App.mode === 'versus' || App.mode === 'online') && oppScale === 1) {
+  if ((App.mode === 'versus' || App.mode === 'cpu' || App.mode === 'online') && oppScale === 1) {
     const cx = AX + W / 2, cy = y0 + (BOARD_Y + 10) * s;
     drawCenterText('VS', cx, cy, s * 1.3, '#9a6bff', s * 3, 0.9);
     setFont(700, s * 0.45, FONT_U, s * 0.3);
