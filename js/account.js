@@ -52,6 +52,7 @@ const Account = {
     this.persist();
     this.setGuestChosen(false);
     this.syncRecords();
+    this.syncSettings();
     updateAccountChip();
     Online.reidentify();
   },
@@ -72,7 +73,7 @@ const Account = {
     updateAccountChip();
     if (this.token) {
       const r = await this.api('GET', 'auth/me');
-      if (r.status === 200) { this.user = r.body.user; this.persist(); this.syncRecords(); }
+      if (r.status === 200) { this.user = r.body.user; this.persist(); this.syncRecords(); this.syncSettings(); }
       else if (r.status === 401) { this.token = null; this.user = null; this.persist(); }
       updateAccountChip();
     }
@@ -103,6 +104,31 @@ const Account = {
     if (App.state === 'menu') updateRecords();
   },
 
+  /**
+   * Controls and handling follow the account: signing in loads the saved copy
+   * (or uploads this browser's copy the first time), and every change is saved back.
+   */
+  syncSettings() {
+    if (!this.signedIn()) return;
+    if (this.user.settings) {
+      applySettings(this.user.settings);
+      saveSettings(true);
+      if (App.state === 'settings') buildSettings();
+    } else {
+      this.pushSettings();
+    }
+  },
+  pushSettings() {
+    if (!this.signedIn()) return;
+    clearTimeout(this.settingsTimer);
+    this.settingsTimer = setTimeout(() => {
+      const copy = { ...settings, v: SETTINGS_VERSION };
+      this.api('PUT', 'settings', { settings: copy }).then(r => {
+        if (r.status === 200 && this.user) { this.user.settings = copy; this.persist(); }
+      });
+    }, 400);
+  },
+
   submitRecord(mode, value) {
     if (!this.signedIn()) return;
     this.api('POST', 'records', { mode, value }).then(r => {
@@ -110,6 +136,8 @@ const Account = {
     });
   },
 };
+
+onSettingsSaved = () => Account.pushSettings();
 
 /* ---------- screens ---------- */
 function updateAccountChip() {
@@ -129,6 +157,24 @@ function openAccount(view) {
   App.state = 'account';
   showAccountView(view || (Account.signedIn() ? 'profile' : 'signin'));
   showScreen('account');
+  if (Account.signedIn()) {
+    // Refresh wins and records, which change on the server after online matches.
+    Account.api('GET', 'auth/me').then(r => {
+      if (r.status !== 200) return;
+      Account.user = r.body.user;
+      Account.persist();
+      if (App.state === 'account' && Account.view === 'profile') renderProfileStats(Account.user);
+    });
+  }
+}
+
+function renderProfileStats(u) {
+  const rec = u.records || {};
+  $('prof-records').innerHTML =
+    `<div class="stat-card"><div class="k">40 LINES BEST</div><div class="v">${rec.sprint ? fmtTime(rec.sprint) : '—'}</div></div>` +
+    `<div class="stat-card"><div class="k">BLITZ BEST</div><div class="v">${rec.blitz ? rec.blitz.toLocaleString() : '—'}</div></div>` +
+    `<div class="stat-card"><div class="k">ONLINE WINS</div><div class="v">${u.wins || 0}</div></div>` +
+    `<div class="stat-card"><div class="k">ONLINE LOSSES</div><div class="v">${u.losses || 0}</div></div>`;
 }
 
 function showAccountView(view) {
@@ -143,15 +189,50 @@ function showAccountView(view) {
     const u = Account.user;
     $('prof-name').textContent = u.username;
     $('prof-id').textContent = `SIGNED IN AS ${u.dcismId.toUpperCase()}`;
-    const rec = u.records || {};
-    $('prof-records').innerHTML =
-      `<div class="stat-card"><div class="k">40 LINES BEST</div><div class="v">${rec.sprint ? fmtTime(rec.sprint) : '—'}</div></div>` +
-      `<div class="stat-card"><div class="k">BLITZ BEST</div><div class="v">${rec.blitz ? rec.blitz.toLocaleString() : '—'}</div></div>`;
+    renderProfileStats(u);
     $('form-password').reset();
   } else {
     const first = view === 'signin' ? $('in-login') : $('in-dcism');
     setTimeout(() => first.focus(), 0);
   }
+}
+
+/* ---------- leaderboard ---------- */
+async function openLeaderboard() {
+  Sound.unlock();
+  App.state = 'leaderboard';
+  const body = $('lb-body');
+  body.innerHTML = '<div class="lb-empty">Loading…</div>';
+  showScreen('leaderboard');
+  const r = Account.available ? await Account.api('GET', 'leaderboard') : { status: 0 };
+  if (App.state !== 'leaderboard') return;
+  if (r.status !== 200) {
+    body.innerHTML = `<div class="lb-empty">The leaderboard needs the Jedris server. ${Account.available ? 'Check your connection and try again.' : ''}</div>`;
+    return;
+  }
+  const players = r.body.players || [];
+  if (!players.length) {
+    body.innerHTML = '<div class="lb-empty">No wins yet. Sign in and win an online match to take first place.</div>';
+    return;
+  }
+  const me = Account.signedIn() ? Account.user.username : null;
+  const table = document.createElement('table');
+  table.className = 'lb';
+  table.innerHTML = '<thead><tr><th>#</th><th>PLAYER</th><th>WINS</th><th>LOSSES</th></tr></thead>';
+  const tbody = document.createElement('tbody');
+  players.forEach((p, i) => {
+    const tr = document.createElement('tr');
+    if (p.username === me) tr.className = 'me';
+    for (const v of [i + 1, p.username, p.wins, p.losses]) {
+      const td = document.createElement('td');
+      td.textContent = v;
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  body.innerHTML = '';
+  body.appendChild(table);
 }
 
 /** Wires a form to an API call; shows the server's error next to the form. */
@@ -206,6 +287,8 @@ accountForm($('form-password'), async ({ current, password }) => {
 document.querySelectorAll('#account [data-view]').forEach(b =>
   b.addEventListener('click', () => showAccountView(b.dataset.view)));
 $('btn-account').addEventListener('click', () => openAccount());
+$('btn-leaderboard').addEventListener('click', openLeaderboard);
+$('btn-lb-back').addEventListener('click', () => App.toMenu());
 $('btn-signout').addEventListener('click', async () => { await Account.signOut(); showAccountView('signin'); });
 $('btn-account-back').addEventListener('click', () => App.toMenu());
 const playAsGuest = () => { Account.setGuestChosen(true); App.toMenu(); };

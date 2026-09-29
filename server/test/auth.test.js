@@ -112,3 +112,50 @@ test('hub: signed-in players use their account name, guests cannot borrow it', (
   assert.deepStrictEqual(match.names, ['Job', 'Guest']);
   assert.deepStrictEqual(match.guests, [false, true]);
 });
+
+test('settings follow the account', () => withServer(async (call) => {
+  const { token } = (await call('POST', '/auth/signup', JOB)).body;
+  const mine = { das: 90, arr: 30, keys: { p1: { left: 'KeyJ' } }, v: 2 };
+  assert.strictEqual((await call('PUT', '/settings', { settings: mine })).status, 401);
+  assert.strictEqual((await call('PUT', '/settings', { settings: 'nope' }, token)).status, 400);
+  assert.strictEqual((await call('PUT', '/settings', { settings: { junk: 'x'.repeat(5000) } }, token)).status, 400);
+  assert.strictEqual((await call('PUT', '/settings', { settings: mine }, token)).status, 200);
+  const other = (await call('POST', '/auth/login', { login: JOB.dcismId, password: JOB.password })).body;
+  assert.deepStrictEqual(other.user.settings, mine);
+}));
+
+test('leaderboard counts wins between two different accounts', () => withServer(async (call, s) => {
+  const job = (await call('POST', '/auth/signup', JOB)).body.user;
+  const ana = (await call('POST', '/auth/signup', { dcismId: 's11111111', username: 'Ana', password: 'password1' })).body.user;
+  const cy = (await call('POST', '/auth/signup', { dcismId: 's22222222', username: 'Cyd', password: 'password1' })).body.user;
+  s.auth.recordMatch(job.id, ana.id);
+  s.auth.recordMatch(job.id, cy.id);
+  s.auth.recordMatch(ana.id, cy.id);
+  s.auth.recordMatch(job.id, job.id); // same account on both sides
+  s.auth.recordMatch(job.id, null);   // guest opponent
+  const lb = (await call('GET', '/leaderboard')).body.players;
+  assert.deepStrictEqual(lb, [
+    { username: 'Job', wins: 2, losses: 0 },
+    { username: 'Ana', wins: 1, losses: 1 },
+  ]);
+  const me = (await call('POST', '/auth/login', { login: 'Cyd', password: 'password1' })).body.user;
+  assert.strictEqual(me.losses, 2);
+}));
+
+test('hub records the match winner for signed-in players', () => {
+  const users = { ta: { id: '1', username: 'Job' }, tb: { id: '2', username: 'Ana' } };
+  const recorded = [];
+  const hub = new Hub({
+    setTimeout: (fn) => { fn(); return 1; }, clearTimeout: () => {},
+    auth: { userForToken: t => users[t] || null, isAccountName: () => false, recordMatch: (w, l) => recorded.push([w, l]) },
+  });
+  const a = hub.connect(() => {}), b = hub.connect(() => {});
+  hub.message(a, { t: 'hello', token: 'ta' });
+  hub.message(b, { t: 'hello', token: 'tb' });
+  hub.message(a, { t: 'quick' });
+  hub.message(b, { t: 'quick' });
+  hub.message(a, { t: 'dead', round: 1 });
+  assert.deepStrictEqual(recorded, []);
+  hub.message(a, { t: 'dead', round: 2 });
+  assert.deepStrictEqual(recorded, [['2', '1']]);
+});

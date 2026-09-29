@@ -77,6 +77,25 @@ const { createServer } = require('../server/index');
     await a.waitForFunction(() => window.Jedris.App.state === 'menu');
     await check('sign in with DCISM ID works', async () => (await a.textContent('#btn-account')).includes('Alpha'));
 
+    // Config follows the account into a fresh browser (like a private tab).
+    await a.evaluate(() => { const s = window.Jedris.settings; s.das = 77; s.keys.p1.hold = 'KeyC'; window.saveSettings(); });
+    await a.waitForFunction(() => window.Jedris.Account.user.settings && window.Jedris.Account.user.settings.das === 77, null, { timeout: 3000 });
+    const fresh = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const f = await fresh.newPage();
+    f.on('pageerror', e => errors.push(`fresh: ${e.message}`));
+    await f.goto(base);
+    await f.waitForFunction(() => !document.getElementById('welcome').classList.contains('hidden'));
+    await f.click('#btn-welcome-signin');
+    await f.fill('#in-login', 's23105047');
+    await f.fill('#in-password', 'password123');
+    await f.click('#form-signin button[type=submit]');
+    await f.waitForFunction(() => window.Jedris.App.state === 'menu');
+    await check('config is restored after signing in elsewhere', () => f.evaluate(() =>
+      window.Jedris.settings.das === 77 && window.Jedris.settings.keys.p1.hold === 'KeyC'));
+    await f.click('#btn-settings');
+    await check('config says it saves to the account', async () => (await f.textContent('#settings-sub')).includes('ACCOUNT'));
+    await fresh.close();
+
     const b = await newPlayerPage('Bravo');
     await b.click('#btn-welcome-guest');
     await check('play as guest goes to the menu', () => visible(b, 'menu'));
@@ -106,6 +125,9 @@ const { createServer } = require('../server/index');
       (await a.evaluate(() => window.Jedris.Online.opponentName())) === 'Bravo');
 
     await a.waitForFunction(() => window.Jedris.App.games[0].phase === 'playing', null, { timeout: 10000 }); // countdown
+    await b.waitForFunction(() => window.Jedris.App.games[0].phase === 'playing', null, { timeout: 10000 });
+    const pieceOrder = (page) => page.evaluate(() => { const g = window.Jedris.App.games[0]; return [g.piece.type, ...g.queue.slice(0, 5)].join(''); });
+    await check('both players get the same pieces', async () => (await pieceOrder(a)) === (await pieceOrder(b)));
     await a.keyboard.press('KeyW');
     await a.keyboard.press('KeyW');
     await a.waitForTimeout(400);
@@ -136,6 +158,10 @@ const { createServer } = require('../server/index');
     await b.waitForFunction(() => window.Jedris.App.state === 'results', null, { timeout: 6000 });
     await check('winner sees VICTORY', async () => (await a.textContent('#res-big')) === 'VICTORY');
     await check('loser sees DEFEAT', async () => (await b.textContent('#res-big')) === 'DEFEAT');
+    await check('wins against guests stay off the leaderboard', async () => {
+      const r = await a.evaluate(() => window.Jedris.Account.api('GET', 'leaderboard'));
+      return r.status === 200 && r.body.players.length === 0;
+    });
 
     await a.click('#btn-again');
     await b.click('#btn-again');

@@ -24,12 +24,12 @@ const ACTIONS = ['left', 'right', 'soft', 'hard', 'ccw', 'cw', 'r180', 'hold'];
 const ACTION_LABELS = { left: 'Move left', right: 'Move right', soft: 'Soft drop', hard: 'Hard drop',
   ccw: 'Rotate CCW', cw: 'Rotate CW', r180: 'Rotate 180°', hold: 'Hold' };
 
-const VERSION = '1.3.2';
+const VERSION = '1.4.0';
 const REPO_URL = 'https://github.com/jedidiah5K/Jedris';
 const PREFERS_REDUCED_MOTION = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const DEFAULT_SETTINGS = {
-  das: 133, arr: 10, sdf: 20, sdfInstant: false, dasCut: false,
+  das: 120, arr: 120, sdf: 20, sdfInstant: false, dasCut: false,
   ghost: true, shake: !PREFERS_REDUCED_MOTION, flash: true, sound: true, volume: 0.5,
   keys: {
     p1: { left: 'KeyA', right: 'KeyD', soft: 'KeyS', hard: 'KeyW', ccw: 'KeyQ', cw: 'KeyE', r180: 'KeyR', hold: 'ShiftLeft' },
@@ -43,22 +43,37 @@ const RECORDS_KEY = 'jedris.records.v1';
 
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
 
-function loadSettings() {
+const SETTINGS_VERSION = 2;
+
+/** Copies saved values over a fresh copy of the defaults, ignoring anything unknown. */
+function mergeSettings(saved) {
   const s = clone(DEFAULT_SETTINGS);
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-    if (saved && typeof saved === 'object') {
-      for (const k of Object.keys(s)) if (k !== 'keys' && k in saved) s[k] = saved[k];
-      if (saved.keys) {
-        for (const p of ['p1', 'p2']) Object.assign(s.keys[p], saved.keys[p] || {});
-        if (typeof saved.keys.retry === 'string') s.keys.retry = saved.keys.retry;
-      }
+  if (!saved || typeof saved !== 'object') return s;
+  saved = { ...saved };
+  // v1 shipped with a very fast auto-repeat (DAS 133 / ARR 10). Players who never
+  // changed it get the calmer, steady default instead.
+  if (!(saved.v >= 2) && saved.das === 133 && saved.arr === 10) { delete saved.das; delete saved.arr; }
+  for (const k of Object.keys(s)) if (k !== 'keys' && k in saved && typeof saved[k] === typeof s[k]) s[k] = saved[k];
+  if (saved.keys && typeof saved.keys === 'object') {
+    for (const p of ['p1', 'p2']) {
+      const keys = saved.keys[p];
+      if (keys && typeof keys === 'object') for (const a of ACTIONS) if (typeof keys[a] === 'string') s.keys[p][a] = keys[a];
     }
-  } catch (e) { /* storage unavailable: use defaults */ }
+    if (typeof saved.keys.retry === 'string') s.keys.retry = saved.keys.retry;
+  }
   return s;
 }
-function saveSettings() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch (e) {}
+function loadSettings() {
+  try { return mergeSettings(JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')); } catch (e) { return clone(DEFAULT_SETTINGS); }
+}
+/** Replaces the live settings object's contents (e.g. with the copy saved to an account). */
+function applySettings(obj) {
+  Object.assign(settings, mergeSettings(obj));
+}
+let onSettingsSaved = null; // set by Account to copy changes to the signed-in account
+function saveSettings(fromAccount) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...settings, v: SETTINGS_VERSION })); } catch (e) {}
+  if (!fromAccount && onSettingsSaved) onSettingsSaved();
 }
 function loadRecords() {
   try { return JSON.parse(localStorage.getItem(RECORDS_KEY) || '{}') || {}; } catch (e) { return {}; }

@@ -68,12 +68,19 @@ const CLEAR_NAMES = ['', 'SINGLE', 'DOUBLE', 'TRIPLE', 'QUAD'];
 const ATTACK_NORMAL = [0, 0, 1, 2, 4];
 const ATTACK_TSPIN = [0, 2, 4, 6];
 const ATTACK_TSPIN_MINI = [0, 0, 1, 2];
+const ATTACK_SPIN = [0, 1, 3, 5, 7];   // L, J, S, Z and I spins
 const ATTACK_B2B = 1;
 const ATTACK_PC = 10;
 const COMBO_TABLE = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 5]; // indexed by combo count (0 = first clear)
 const SCORE_NORMAL = [0, 100, 300, 500, 800];
 const SCORE_TSPIN = [400, 800, 1200, 1600];
 const SCORE_TSPIN_MINI = [100, 200, 400, 400];
+const SCORE_SPIN = [200, 500, 900, 1300, 1700];
+const SPIN_TABLES = {
+  full: { attack: ATTACK_TSPIN, score: SCORE_TSPIN },
+  mini: { attack: ATTACK_TSPIN_MINI, score: SCORE_TSPIN_MINI },
+  spin: { attack: ATTACK_SPIN, score: SCORE_SPIN },
+};
 const SCORE_PC = [0, 800, 1200, 1800, 2000];
 const SCORE_PC_B2B_QUAD = 3200;
 
