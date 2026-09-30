@@ -24,7 +24,7 @@ const ACTIONS = ['left', 'right', 'soft', 'hard', 'ccw', 'cw', 'r180', 'hold'];
 const ACTION_LABELS = { left: 'Move left', right: 'Move right', soft: 'Soft drop', hard: 'Hard drop',
   ccw: 'Rotate CCW', cw: 'Rotate CW', r180: 'Rotate 180°', hold: 'Hold' };
 
-const VERSION = '1.7.0';
+const VERSION = '1.8.0';
 const REPO_URL = 'https://github.com/jedidiah5K/Jedris';
 const PREFERS_REDUCED_MOTION = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -36,7 +36,11 @@ const DEFAULT_SETTINGS = {
     p2: { left: 'ArrowLeft', right: 'ArrowRight', soft: 'ArrowDown', hard: 'ArrowUp', ccw: 'Comma', cw: 'Period', r180: 'Slash', hold: 'ShiftRight' },
     retry: 'Backquote', // quick restart in solo modes
   },
+  // Custom on-screen controller layouts (phones). null = the built-in layout.
+  // Each is { <button id>: { a: action, x, y: centre as a fraction of the screen, w, h: size in pad units } }.
+  touch: { portrait: null, landscape: null },
 };
+const PAD_BUTTONS = ['left', 'right', 'soft', 'hard', 'hold', 'r180', 'ccw', 'cw'];
 
 const STORAGE_KEY = 'jedris.settings.v1';
 const RECORDS_KEY = 'jedris.records.v1';
@@ -55,7 +59,7 @@ function mergeSettings(saved) {
   const oldDefault = (!(saved.v >= 2) && saved.das === 133 && saved.arr === 10)
     || (!(saved.v >= 3) && saved.das === 120 && saved.arr === 120);
   if (oldDefault) { delete saved.das; delete saved.arr; }
-  for (const k of Object.keys(s)) if (k !== 'keys' && k in saved && typeof saved[k] === typeof s[k]) s[k] = saved[k];
+  for (const k of Object.keys(s)) if (k !== 'keys' && k !== 'touch' && k in saved && typeof saved[k] === typeof s[k]) s[k] = saved[k];
   if (saved.keys && typeof saved.keys === 'object') {
     for (const p of ['p1', 'p2']) {
       const keys = saved.keys[p];
@@ -63,7 +67,24 @@ function mergeSettings(saved) {
     }
     if (typeof saved.keys.retry === 'string') s.keys.retry = saved.keys.retry;
   }
+  if (saved.touch && typeof saved.touch === 'object') {
+    for (const o of ['portrait', 'landscape']) s.touch[o] = cleanPadLayout(saved.touch[o]);
+  }
   return s;
+}
+/** A saved controller layout with every button present and in range, or null. */
+function cleanPadLayout(l) {
+  if (!l || typeof l !== 'object') return null;
+  const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null);
+  const out = {};
+  for (const id of PAD_BUTTONS) {
+    const b = l[id];
+    if (!b || typeof b !== 'object' || !ACTIONS.includes(b.a)) return null;
+    const x = num(b.x, 0, 1), y = num(b.y, 0, 1), w = num(b.w, 0.5, 4), h = num(b.h, 0.5, 4);
+    if (x === null || y === null || w === null || h === null) return null;
+    out[id] = { a: b.a, x, y, w, h };
+  }
+  return out;
 }
 function loadSettings() {
   try { return mergeSettings(JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')); } catch (e) { return clone(DEFAULT_SETTINGS); }

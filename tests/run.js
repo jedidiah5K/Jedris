@@ -194,6 +194,44 @@ const url = (p) => 'file://' + path.join(root, p);
   await tp.tap('#pad-menu');
   await tp.waitForFunction(() => document.getElementById('pad').classList.contains('hidden'), null, { timeout: 2000 }).catch(() => {});
   await check('touch: menu button pauses and hides the pad', async () => (await tstate()).paused && !(await tp.isVisible('#pad')));
+  // Custom layout: drag HOLD up, make it hard drop, then play with it.
+  await tp.evaluate(() => { App.toMenu(); showMenuView('main'); });
+  await tp.tap('#btn-settings');
+  await check('touch: config offers phone controls', () => tp.isVisible('#btn-edit-pad'));
+  await tp.tap('#btn-edit-pad');
+  await check('touch: layout editor opens with the pad', async () => (await tp.isVisible('#pad-editor-bar')) && (await tp.isVisible('.pfree[data-id="hold"]')));
+  await tp.evaluate(() => {
+    const el = document.querySelector('.pfree[data-id="hold"]');
+    const r = el.getBoundingClientRect(), x = r.x + r.width / 2, y = r.y + r.height / 2;
+    const ev = (t, dx, dy) => el.dispatchEvent(new PointerEvent(t, { pointerId: 9, clientX: x + dx, clientY: y + dy, bubbles: true, pointerType: 'touch' }));
+    ev('pointerdown', 0, 0); ev('pointermove', -60, -200); ev('pointermove', -120, -300); ev('pointerup', -120, -300);
+  });
+  await check('touch: dragging moves a button', () => tp.evaluate(() => settings.touch.portrait.hold.y < 0.6));
+  await tp.tap('#pe-acts [data-act="hard"]');
+  await check('touch: remapping swaps actions', () => tp.evaluate(() =>
+    settings.touch.portrait.hold.a === 'hard' && settings.touch.portrait.hard.a === 'hold'));
+  await tp.tap('#pe-bigger');
+  await check('touch: resizing grows a button', () => tp.evaluate(() => settings.touch.portrait.hold.w > 1.1));
+  await tp.tap('#pe-done');
+  await check('touch: custom layout is saved', async () => (await tp.isVisible('#settings')) && tp.evaluate(() =>
+    JSON.parse(localStorage.getItem('jedris.settings.v1')).touch.portrait.hold.a === 'hard'));
+  await tp.evaluate(() => { App.toMenu(); showMenuView('solo'); });
+  await tp.tap('[data-mode="sprint"]');
+  await tp.waitForFunction(() => window.Jedris.App.games[0].phase === 'playing', null, { timeout: 8000 });
+  await tp.tap('.pfree[data-id="hold"]');
+  await tp.waitForFunction(() => window.Jedris.App.games[0].pieces === 1, null, { timeout: 2000 }).catch(() => {});
+  await check('touch: remapped button hard drops in game', () => tp.evaluate(() => window.Jedris.App.games[0].pieces === 1));
+  await check('touch: board keeps clear of the custom buttons', () => tp.evaluate(() => {
+    const L = window.Jedris.App.games[0]._L;
+    const r = document.querySelector('.pfree[data-id="left"]').getBoundingClientRect();
+    return L.by + L.bh <= r.top;
+  }));
+  await tp.evaluate(() => { App.toMenu(); showMenuView('main'); });
+  await tp.tap('#btn-settings');
+  await tp.tap('#btn-edit-pad');
+  await tp.tap('#pe-reset');
+  await tp.tap('#pe-done');
+  await check('touch: reset goes back to the built-in layout', () => tp.evaluate(() => settings.touch.portrait === null));
   if (touchErrors.length) fail('touch page errors: ' + JSON.stringify(touchErrors)); else pass('touch: no page errors');
   await phone.close();
 

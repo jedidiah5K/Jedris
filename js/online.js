@@ -218,7 +218,7 @@ const Online = {
       case 'disconnected':
         if (!this.match) return;
         this.match.over = true;
-        App.onlineOpponentLeft(m.t === 'disconnected');
+        App.onlineOpponentLeft(m.t === 'disconnected', !!m.forfeit);
         break;
     }
   },
