@@ -724,6 +724,25 @@ function drawGlobalFx(dt) {
 }
 
 /* ---------- frame ---------- */
+/** Fits n boards into whatever the touch controller leaves free. */
+function fitBoards(n) {
+  const ins = Touch.insets();
+  const AX = ins.left, W = VIEW_W - ins.left - ins.right, H = VIEW_H - ins.bottom;
+  // On a touch screen the opponent's board is drawn at a smaller scale beside yours.
+  const oppScale = Touch.shown && n === 2 ? 0.46 : 1;
+  const totalW = n === 1 ? UNIT_W : UNIT_W + (UNIT_GAP * oppScale) + UNIT_W * oppScale;
+  // Phones need every pixel, so the margin is thinner and the cell size snaps to half pixels.
+  const m = Touch.shown ? 8 : 24;
+  const s = Math.max(6, Math.floor(Math.min((W - m) / totalW, (H - m) / UNIT_H) * 2) / 2);
+  const x0 = AX + (W - totalW * s) / 2, y0 = Math.max(8, (H - UNIT_H * s) / 2);
+  return { AX, W, H, oppScale, s, x0, y0 };
+}
+/** Where a solo board lands on screen, for the touch layout editor's preview. */
+function soloBoardRect() {
+  const { s, x0, y0 } = fitBoards(1);
+  return { x: x0 + BOARD_X * s, y: y0 + BOARD_Y * s, w: COLS * s, h: VISIBLE_ROWS * s };
+}
+
 let lastRenderTime = performance.now();
 function render(now = performance.now()) {
   const dt = Math.min(0.05, (now - lastRenderTime) / 1000);
@@ -732,17 +751,8 @@ function render(now = performance.now()) {
   const games = App.games;
   drawBackground(t, games.length > 0);
   if (!games.length) return;
-  // Fit the boards into whatever the touch controller leaves free.
-  const ins = Touch.insets();
-  const AX = ins.left, W = VIEW_W - ins.left - ins.right, H = VIEW_H - ins.bottom;
   const n = games.length;
-  // On a touch screen the opponent's board is drawn at a smaller scale beside yours.
-  const oppScale = Touch.shown && n === 2 ? 0.46 : 1;
-  const totalW = n === 1 ? UNIT_W : UNIT_W + (UNIT_GAP * oppScale) + UNIT_W * oppScale;
-  // Phones need every pixel, so the margin is thinner and the cell size snaps to half pixels.
-  const m = Touch.shown ? 8 : 24;
-  const s = Math.max(6, Math.floor(Math.min((W - m) / totalW, (H - m) / UNIT_H) * 2) / 2);
-  const x0 = AX + (W - totalW * s) / 2, y0 = Math.max(8, (H - UNIT_H * s) / 2);
+  const { AX, W, oppScale, s, x0, y0 } = fitBoards(n);
   games.forEach((g, i) => {
     let header;
     if (App.mode === 'versus') header = { name: `PLAYER ${i + 1}`, wins: App.wins[i], accent: ACCENTS[i] };

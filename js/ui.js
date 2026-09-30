@@ -149,15 +149,17 @@ const App = {
     this.onlineTimer = setTimeout(() => { if (this.mode === 'online' && this.state !== 'menu') this.showResults(); }, 2200);
   },
 
-  onlineOpponentLeft(connectionLost) {
+  onlineOpponentLeft(connectionLost, forfeit) {
     clearTimeout(this.onlineTimer);
-    this.onlineNotice = connectionLost ? 'CONNECTION TO THE SERVER WAS LOST' : 'YOUR OPPONENT LEFT THE MATCH';
+    this.onlineNotice = connectionLost ? 'CONNECTION TO THE SERVER WAS LOST'
+      : forfeit ? 'YOUR OPPONENT LEFT · YOU WIN BY FORFEIT' : 'YOUR OPPONENT LEFT THE MATCH';
     if (this.state === 'menu' || this.state === 'online-lobby') return;
     this.showResults();
   },
 
   onEscape() {
     if (Input.capture) return;
+    if (Touch.editing) { Touch.closeEditor(); return; }
     if (this.inGame()) this.setPaused(!this.paused);
     else if (this.state !== 'menu') this.toMenu();
     else if (this.menuView && this.menuView !== 'main') showMenuView(MENU_PARENT[this.menuView] || 'main');
@@ -444,6 +446,7 @@ function buildSettings() {
   volRow.querySelector('.ctrl').append(vol);
   visuals.append(volRow);
 
+  Touch.describe();
   buildBinds();
 }
 

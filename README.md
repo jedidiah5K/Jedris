@@ -53,6 +53,8 @@ On a touch screen an on-screen controller appears while you play. In portrait th
 
 The pad follows your DAS, ARR and soft drop settings. Local Versus is hidden on touch screens because it needs a shared keyboard. In Online Versus the opponent's board is drawn smaller beside yours.
 
+To make your own controller, open **Config > Phone Controls > Customize**. Drag any button to move it, tap it to make it bigger or smaller or to change what it does (the button that had that action takes the old one), and tap **Reset** for the built-in layout. Portrait and landscape each keep their own layout, saved to your account when signed in and to the browser otherwise.
+
 ### Install it as an app
 
 Jedris is an installable web app: it gets its own home-screen icon, opens full screen without the browser bars, and keeps a copy of the game so 40 Lines, Blitz, Zen and Local Versus work offline (Online Versus, accounts and the leaderboard need a connection). It updates itself whenever it's opened online.
@@ -103,7 +105,7 @@ Protocol (JSON over a WebSocket at `<site>/ws`):
 
 Players can create an account with their DCISM ID (for example `s23105047`), a display name and a password of their own, or play as a guest. Signed-in players appear under their display name in online matches (guests can't borrow a registered name), and their 40 Lines and Blitz personal bests are saved to the account. Config (keys, handling, sound) is saved to the account too, so it follows you to any browser, including private tabs.
 
-The **Leaderboard** ranks players by online match wins. A win counts when two different signed-in accounts finish a best-of-3 online match; games against guests and matches someone leaves early don't count.
+The **Leaderboard** ranks players by online match wins. A win counts when two different signed-in accounts finish a best-of-3 online match; games against guests don't count. Leaving an online match before it's decided (quitting, closing the page or losing the connection) counts as a loss for the player who left and a win for the other.
 
 Accounts live in `data/accounts.json` on the server (set `JEDRIS_DATA` to move it). Passwords are stored as scrypt hashes and sessions as SHA-256 hashes of random tokens. Nothing checks that a DCISM ID belongs to the person typing it, so the first person to register an ID owns it.
 

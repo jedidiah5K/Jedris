@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=1.7.0">
+<link rel="stylesheet" href="css/style.css?v=1.8.0">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -305,6 +305,11 @@
     <div id="handling"></div>
     <h3>Visuals &amp; Sound</h3>
     <div id="visuals"></div>
+    <div class="touch-only">
+      <h3>Phone Controls</h3>
+      <div class="setting"><label>On-screen buttons<small id="pad-layout-state">Built-in layout</small></label>
+        <div class="ctrl"><button id="btn-edit-pad" class="chip">Customize</button></div></div>
+    </div>
     <h3>Controls</h3>
     <div class="warn">Heads up: many keyboards can't register lots of keys pressed at once (ghosting). In Local Versus, if some inputs get dropped, try binding keys that are further apart.</div>
     <table class="binds" id="binds"></table>
@@ -359,19 +364,38 @@
     <button class="pbtn ccw" data-act="ccw" data-lit="ccw" aria-label="Rotate counterclockwise">↺</button>
     <button class="pbtn cw" data-act="cw" data-lit="cw" aria-label="Rotate clockwise">↻</button>
   </div>
+  <!-- Buttons for a custom layout: each one placed anywhere on screen -->
+  <div id="pad-free" role="group" aria-label="Custom touch controls"></div>
 </div>
 
-<script src="js/config.js?v=1.7.0"></script>
-<script src="js/pieces.js?v=1.7.0"></script>
-<script src="js/sound.js?v=1.7.0"></script>
-<script src="js/game.js?v=1.7.0"></script>
-<script src="js/input.js?v=1.7.0"></script>
-<script src="js/touch.js?v=1.7.0"></script>
-<script src="js/cpu.js?v=1.7.0"></script>
-<script src="js/render.js?v=1.7.0"></script>
-<script src="js/ui.js?v=1.7.0"></script>
-<script src="js/account.js?v=1.7.0"></script>
-<script src="js/online.js?v=1.7.0"></script>
-<script src="js/main.js?v=1.7.0"></script>
+<!-- Touch layout editor: drag, resize and remap the on-screen buttons -->
+<div id="pad-editor" class="hidden" aria-hidden="true"><div id="ghost-board"><span>BOARD</span></div></div>
+<div id="pad-editor-bar" class="hidden" role="dialog" aria-label="Edit touch controls">
+  <div class="pe-top">
+    <div class="pe-title"><b>EDIT CONTROLS</b><small id="pe-orient">PORTRAIT</small></div>
+    <button id="pe-reset" class="chip">Reset</button>
+    <button id="pe-done" class="chip primary">Done</button>
+  </div>
+  <p class="pe-hint" id="pe-hint">Drag a button to move it. Tap one to resize it or change what it does.</p>
+  <div class="pe-sel hidden" id="pe-sel">
+    <div class="pe-size"><span id="pe-sel-name">BUTTON</span>
+      <button id="pe-smaller" class="chip" aria-label="Smaller">−</button>
+      <button id="pe-bigger" class="chip" aria-label="Bigger">+</button></div>
+    <div class="pe-acts" id="pe-acts" role="radiogroup" aria-label="What this button does"></div>
+  </div>
+</div>
+
+<script src="js/config.js?v=1.8.0"></script>
+<script src="js/pieces.js?v=1.8.0"></script>
+<script src="js/sound.js?v=1.8.0"></script>
+<script src="js/game.js?v=1.8.0"></script>
+<script src="js/input.js?v=1.8.0"></script>
+<script src="js/touch.js?v=1.8.0"></script>
+<script src="js/cpu.js?v=1.8.0"></script>
+<script src="js/render.js?v=1.8.0"></script>
+<script src="js/ui.js?v=1.8.0"></script>
+<script src="js/account.js?v=1.8.0"></script>
+<script src="js/online.js?v=1.8.0"></script>
+<script src="js/main.js?v=1.8.0"></script>
 </body>
 </html>

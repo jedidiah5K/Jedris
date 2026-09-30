@@ -118,6 +118,33 @@ test('leaving or disconnecting mid-match notifies the opponent', () => {
   assert.equal(b.match, null);
 });
 
+test('quitting an unfinished match counts as a loss for the quitter', () => {
+  const recorded = [];
+  const hub = new Hub({ ...fakeTimers(), auth: { recordMatch: (w, l) => recorded.push([w, l]) } });
+  const a = makeClient(hub), b = makeClient(hub);
+  a.userId = 'u-a'; b.userId = 'u-b';
+  hub.message(a, { t: 'quick' });
+  hub.message(b, { t: 'quick' });
+  hub.message(b, { t: 'leave' });
+  assert.deepEqual(recorded, [['u-a', 'u-b']]);
+  assert.equal(a.last('opponentLeft').forfeit, true);
+});
+
+test('leaving after a match is over records nothing extra', () => {
+  const recorded = [];
+  const timers = fakeTimers();
+  const hub = new Hub({ ...timers, auth: { recordMatch: (w, l) => recorded.push([w, l]) } });
+  const a = makeClient(hub), b = makeClient(hub);
+  a.userId = 'u-a'; b.userId = 'u-b';
+  hub.message(a, { t: 'quick' });
+  hub.message(b, { t: 'quick' });
+  hub.message(a, { t: 'dead', round: 1 });
+  timers.flush();
+  hub.message(a, { t: 'dead', round: 2 });
+  hub.message(a, { t: 'leave' });
+  assert.deepEqual(recorded, [['u-b', 'u-a']]);
+});
+
 test('websocket server: health endpoint, static files and a relayed match', async () => {
   const { server } = createServer();
   await new Promise(r => server.listen(0, '127.0.0.1', r));

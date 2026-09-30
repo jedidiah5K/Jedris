@@ -139,11 +139,14 @@ class Hub {
     if (m) {
       client.match = null;
       if (m.timer) this.clearTimeout(m.timer);
+      // Quitting (or dropping out of) a match that isn't finished yet forfeits it.
+      const forfeit = m.state !== 'over' && m.state !== 'closed';
       m.state = 'closed';
       const other = m.players.find(p => p !== client);
+      if (forfeit && other && this.auth && this.auth.recordMatch) this.auth.recordMatch(other.userId, client.userId);
       if (other && other.match === m) {
         other.match = null;
-        other.send({ t: 'opponentLeft', wins: m.wins.slice(), you: m.players.indexOf(other) });
+        other.send({ t: 'opponentLeft', wins: m.wins.slice(), you: m.players.indexOf(other), forfeit });
       }
     }
   }
