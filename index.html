@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=1.8.0">
+<link rel="stylesheet" href="css/style.css?v=2.0.0">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -34,8 +34,8 @@
     <span class="topbar-right"><span id="clock"></span><button id="btn-account" class="chip account-chip hidden" title="Your account"></button><button id="btn-fullscreen" class="chip" title="Toggle fullscreen">FULLSCREEN</button></span></div>
   <div class="menu-body">
     <div class="menu-col">
-      <h1 class="logo">JEDRIS</h1>
-      <p class="tagline">IT'S JEDRIS</p>
+      <h1 class="logo" data-text="JEDRIS"><span class="logo-txt">JEDRIS</span></h1>
+      <p class="tagline"><span class="type">IT'S JEDRIS</span></p>
       <!-- Main menu: four cards -->
       <div class="menu-view" id="view-main">
         <button class="tile big" id="btn-solo" style="--c: var(--cyan)">
@@ -117,8 +117,8 @@
 
 <div id="welcome" class="screen dim hidden">
   <div class="panel narrow">
-    <h1 class="logo small-logo">JEDRIS</h1>
-    <p class="tagline">IT'S JEDRIS</p>
+    <h1 class="logo small-logo" data-text="JEDRIS"><span class="logo-txt">JEDRIS</span></h1>
+    <p class="tagline"><span class="type">IT'S JEDRIS</span></p>
     <p class="lead center">Sign in with your DCISM ID to keep your name and personal bests, or jump straight in as a guest.</p>
     <div class="stack">
       <button id="btn-welcome-signin" class="primary">Sign In</button>
@@ -385,17 +385,17 @@
   </div>
 </div>
 
-<script src="js/config.js?v=1.8.0"></script>
-<script src="js/pieces.js?v=1.8.0"></script>
-<script src="js/sound.js?v=1.8.0"></script>
-<script src="js/game.js?v=1.8.0"></script>
-<script src="js/input.js?v=1.8.0"></script>
-<script src="js/touch.js?v=1.8.0"></script>
-<script src="js/cpu.js?v=1.8.0"></script>
-<script src="js/render.js?v=1.8.0"></script>
-<script src="js/ui.js?v=1.8.0"></script>
-<script src="js/account.js?v=1.8.0"></script>
-<script src="js/online.js?v=1.8.0"></script>
-<script src="js/main.js?v=1.8.0"></script>
+<script src="js/config.js?v=2.0.0"></script>
+<script src="js/pieces.js?v=2.0.0"></script>
+<script src="js/sound.js?v=2.0.0"></script>
+<script src="js/game.js?v=2.0.0"></script>
+<script src="js/input.js?v=2.0.0"></script>
+<script src="js/touch.js?v=2.0.0"></script>
+<script src="js/cpu.js?v=2.0.0"></script>
+<script src="js/render.js?v=2.0.0"></script>
+<script src="js/ui.js?v=2.0.0"></script>
+<script src="js/account.js?v=2.0.0"></script>
+<script src="js/online.js?v=2.0.0"></script>
+<script src="js/main.js?v=2.0.0"></script>
 </body>
 </html>

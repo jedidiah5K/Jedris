@@ -31,3 +31,17 @@ if ('serviceWorker' in navigator && Account.available) {
 
 // Exposed for automated tests and tinkering in the console.
 window.Jedris = { Game, App, Account, Online, Touch, SHAPES, KICKS_JLSTZ, KICKS_I, KICKS_180, settings, TICK_MS, comboAttack, gravityForLevel };
+
+// Menu cards and the menu glow follow the mouse pointer.
+document.addEventListener('pointermove', (e) => {
+  if (e.pointerType !== 'mouse' || App.state !== 'menu') return;
+  const menu = $('menu');
+  menu.style.setProperty('--mx', `${e.clientX}px`);
+  menu.style.setProperty('--my', `${e.clientY}px`);
+  const tile = e.target.closest && e.target.closest('.tile');
+  if (tile) {
+    const r = tile.getBoundingClientRect();
+    tile.style.setProperty('--px', `${e.clientX - r.left}px`);
+    tile.style.setProperty('--py', `${e.clientY - r.top}px`);
+  }
+}, { passive: true });

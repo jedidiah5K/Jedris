@@ -64,6 +64,12 @@ Jedris is an installable web app: it gets its own home-screen icon, opens full s
 
 A native App Store or sideloaded iOS build isn't included: installing one outside the App Store needs a Mac with Xcode and an Apple developer account, and free builds expire after 7 days.
 
+## Look and effects
+
+Every play has its own visual signature: line clears vent as laser beams and shards, a **QUAD** slams a title over the board with a light pillar and shockwave, spins whirl a vortex where the piece landed, combos grow a counter behind the stack, back-to-back chains crackle gold lightning up the walls, perfect clears burst in every colour, and attacks fly as plasma comets into the opponent's garbage meter. The background (aurora, stars and a neon floor grid) pulses and speeds up as you play.
+
+**Config > Effects quality** picks Ultra, Standard or Minimal. If the game runs slowly it steps down by itself, and "reduce motion" devices start on Minimal. The full design brief is in the project files (`jedris-ultimate-design-prompt.md`).
+
 ## Mechanics
 
 - 10×20 playfield with 2 hidden rows above it

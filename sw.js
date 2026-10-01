@@ -8,7 +8,7 @@
  * copy is used, so 40 Lines, Blitz, Zen and Local Versus still work.
  * Online Versus, accounts and the leaderboard need the server.
  * ========================================================================= */
-const CACHE = 'jedris-v1';
+const CACHE = 'jedris-v2.0.0';
 const CORE = ['./', 'index.html', 'manifest.webmanifest', 'assets/favicon.svg', 'assets/icon-192.png', 'assets/icon-512.png'];
 
 self.addEventListener('install', (event) => {
