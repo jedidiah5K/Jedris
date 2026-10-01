@@ -432,6 +432,25 @@ function buildSettings() {
   sdfRow.querySelector('.ctrl').prepend(inst);
   toggleRow(handling, 'dasCut', 'DAS cut on rotate', 'Rotating resets the DAS charge');
 
+  const fxRow = document.createElement('div');
+  fxRow.className = 'setting';
+  fxRow.innerHTML = '<label>Effects quality<small>Particles, glow and big-play animations. Lower it if the game stutters.</small></label><div class="ctrl seg" role="radiogroup" aria-label="Effects quality"></div>';
+  for (const q of FX_QUALITIES) {
+    const b = document.createElement('button');
+    b.className = 'chip' + (settings.fx === q ? ' on' : '');
+    b.textContent = q[0].toUpperCase() + q.slice(1);
+    b.setAttribute('role', 'radio');
+    b.setAttribute('aria-checked', String(settings.fx === q));
+    b.dataset.fx = q;
+    b.addEventListener('click', () => {
+      settings.fx = q;
+      fxDownshift = 0; // a manual choice resets the automatic step-down
+      saveSettings();
+      for (const o of fxRow.querySelectorAll('.chip')) { o.classList.toggle('on', o === b); o.setAttribute('aria-checked', String(o === b)); }
+    });
+    fxRow.querySelector('.ctrl').append(b);
+  }
+  visuals.append(fxRow);
   toggleRow(visuals, 'ghost', 'Ghost piece', 'Show where the piece will land');
   toggleRow(visuals, 'flash', 'Line clear flash', 'Flash cleared rows');
   toggleRow(visuals, 'shake', 'Screen shake', 'Shake the board on big attacks and incoming garbage');

@@ -16,6 +16,35 @@ const ACCENTS = ['#38e8ff', '#ff4fd8'];
 const HAS_LETTER_SPACING = 'letterSpacing' in ctx;
 let VIEW_W = innerWidth, VIEW_H = innerHeight;
 const globalFx = []; // attack projectiles travelling between boards (screen space)
+let globalParts = []; // comet sparks and impact bursts (screen space)
+
+/* ---------- effects quality ---------- */
+// Ultra / Standard / Minimal, chosen in Config. If frames stay slow for a couple of
+// seconds in game, effects step down on their own for the rest of the session.
+const FX_LEVELS = ['minimal', 'standard', 'ultra'];
+const FX_PARTICLE_CAP = [80, 350, 700];
+const FX_PARTICLE_MUL = [0.25, 0.6, 1];
+let fxDownshift = 0, slowFor = 0, avgFrameMs = 16;
+function fxLevel() {
+  const i = FX_LEVELS.indexOf(settings.fx);
+  return Math.max(0, (i < 0 ? 2 : i) - fxDownshift);
+}
+function trackFrameRate(rawMs, dt, inGame) {
+  if (!inGame || rawMs > 100) return;
+  avgFrameMs = avgFrameMs * 0.95 + rawMs * 0.05;
+  slowFor = avgFrameMs > 22 ? slowFor + dt : 0;
+  if (slowFor > 2 && fxLevel() > 0) { fxDownshift++; slowFor = 0; avgFrameMs = 16; }
+}
+
+/* Screen-wide reactions: a tinted flash, the floor grid pulse and the shared "energy". */
+const screenFx = { flash: 0, flashColor: '#38e8ff', pulse: 0, energy: 0, gridPhase: 0, danger: 0 };
+function screenFlash(color, strength) {
+  if (!settings.flash || fxLevel() === 0) return;
+  if (strength >= screenFx.flash) { screenFx.flash = Math.min(0.3, strength); screenFx.flashColor = color; }
+}
+// The pointer tilts the background a little on the menu.
+const pointer = { x: 0.5, y: 0.5, sx: 0.5, sy: 0.5 };
+window.addEventListener('pointermove', (e) => { pointer.x = e.clientX / VIEW_W; pointer.y = e.clientY / VIEW_H; }, { passive: true });
 
 function resizeCanvas() {
   const dpr = window.devicePixelRatio || 1;
@@ -142,38 +171,85 @@ function drawMiniPiece(type, cx, cy, s, dim) {
 }
 
 /* ---------- animated background ---------- */
-const BG_BITS = Array.from({ length: 60 }, () => ({
-  x: Math.random(), y: Math.random(), z: Math.random(), r: Math.random() * Math.PI,
-  c: PIECE_COLORS[PIECE_TYPES[Math.floor(Math.random() * 7)]],
+// Deep space: drifting aurora clouds, a parallax starfield, a neon floor grid that
+// pulses and speeds up with play, and outlined pieces floating upward.
+const STARS = Array.from({ length: 150 }, () => ({ x: Math.random(), y: Math.random(), z: Math.random(), tw: Math.random() * 6.3 }));
+const DEBRIS = Array.from({ length: 24 }, (_, i) => ({
+  x: Math.random(), y: Math.random(), z: Math.random(), r: Math.random() * 6.3, vr: (Math.random() - 0.5) * 0.4,
+  type: PIECE_TYPES[i % 7],
 }));
-function drawBackground(t, inGame) {
+const AURORA = [
+  { c: '#9a6bff', x: 0.18, y: 0.22, r: 0.6, sp: 0.05, ph: 0 },
+  { c: '#38e8ff', x: 0.82, y: 0.18, r: 0.5, sp: 0.07, ph: 2 },
+  { c: '#ff4fd8', x: 0.55, y: 0.52, r: 0.42, sp: 0.04, ph: 4 },
+];
+const GRID_CALM = [56, 232, 255], GRID_HOT = [255, 79, 216];
+function drawBackground(t, inGame, dt) {
   const W = VIEW_W, H = VIEW_H;
+  const lvl = fxLevel();
+  const E = screenFx.energy;
+  pointer.sx += (pointer.x - pointer.sx) * Math.min(1, dt * 3);
+  pointer.sy += (pointer.y - pointer.sy) * Math.min(1, dt * 3);
+  const px = inGame ? 0 : pointer.sx - 0.5, py = inGame ? 0 : pointer.sy - 0.5;
   const g = ctx.createRadialGradient(W / 2, H * 0.3, 0, W / 2, H * 0.3, Math.max(W, H) * 0.85);
   g.addColorStop(0, '#0c1838');
   g.addColorStop(0.45, '#060b1d');
   g.addColorStop(1, '#010207');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
-
-  // Perspective grid floor scrolling towards the viewer
-  const hz = H * 0.64, vx = W / 2;
   const strength = inGame ? 0.45 : 1;
+  const hz = H * 0.64;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  // Aurora clouds
+  if (lvl > 0) {
+    const R = Math.max(W, H);
+    for (const a of AURORA) {
+      const cx = (a.x + Math.sin(t * a.sp + a.ph) * 0.08 - px * 0.08) * W;
+      const cy = (a.y + Math.cos(t * a.sp * 1.3 + a.ph) * 0.06 - py * 0.08) * H;
+      const r = a.r * R;
+      const ag = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      ag.addColorStop(0, rgba(a.c, (0.12 + E * 0.1) * strength));
+      ag.addColorStop(1, rgba(a.c, 0));
+      ctx.fillStyle = ag;
+      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+    }
+  }
+  // Stars in three depths, twinkling and drifting toward the horizon
+  const nStars = lvl === 2 ? STARS.length : lvl === 1 ? 80 : 30;
+  for (let i = 0; i < nStars; i++) {
+    const st = STARS[i];
+    const y = ((st.y + t * 0.006 * (0.3 + st.z)) % 1) * hz;
+    const x = ((st.x - px * 0.05 * (0.3 + st.z)) % 1 + 1) % 1 * W;
+    const a = (0.2 + 0.6 * st.z) * (0.55 + 0.45 * Math.sin(t * 2 + st.tw)) * (inGame ? 0.6 : 1);
+    const sz = 0.6 + st.z * 1.7;
+    ctx.fillStyle = `rgba(200,230,255,${a})`;
+    ctx.fillRect(x, y, sz, sz);
+  }
+  ctx.restore();
+
+  // Perspective grid floor scrolling towards the viewer; faster and hotter with energy
+  screenFx.gridPhase = (screenFx.gridPhase + dt * (0.6 + E * 1.8)) % 1;
+  const vx = W / 2 - px * W * 0.08;
+  const col = GRID_CALM.map((v, i) => Math.round(v + (GRID_HOT[i] - v) * Math.min(1, E * 1.2))).join(',');
+  const glow = Math.min(1, strength * (1 + screenFx.pulse * 0.9));
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, hz, W, H - hz);
   ctx.clip();
   const fade = ctx.createLinearGradient(0, hz, 0, H);
-  fade.addColorStop(0, 'rgba(56,232,255,0)');
-  fade.addColorStop(1, `rgba(56,232,255,${0.35 * strength})`);
+  fade.addColorStop(0, `rgba(${col},0)`);
+  fade.addColorStop(1, `rgba(${col},${0.35 * glow})`);
   ctx.strokeStyle = fade;
   ctx.lineWidth = 1;
   ctx.beginPath();
   const near = W / 9;
   for (let i = -14; i <= 14; i++) {
     ctx.moveTo(vx + i * near * 0.06, hz);
-    ctx.lineTo(vx + i * near * 1.6, H);
+    ctx.lineTo(W / 2 + i * near * 1.6, H);
   }
-  const phase = (t * 0.6) % 1;
+  const phase = screenFx.gridPhase;
   for (let k = 0; k < 26; k++) {
     const z = 1 + k - phase;
     const y = hz + (H - hz) * (1 / z) * 0.9;
@@ -185,84 +261,122 @@ function drawBackground(t, inGame) {
   // Horizon glow
   const hg = ctx.createLinearGradient(0, 0, W, 0);
   hg.addColorStop(0, 'rgba(154,107,255,0)');
-  hg.addColorStop(0.5, `rgba(120,200,255,${0.55 * strength})`);
+  hg.addColorStop(0.5, `rgba(${col},${0.55 * glow})`);
   hg.addColorStop(1, 'rgba(255,79,216,0)');
   ctx.fillStyle = hg;
-  ctx.fillRect(0, hz - 1, W, 2);
-  const haze = ctx.createLinearGradient(0, hz - H * 0.12, 0, hz);
+  ctx.fillRect(0, hz - 1, W, 2 + screenFx.pulse * 2);
+  const haze = ctx.createLinearGradient(0, hz - H * 0.14, 0, hz);
   haze.addColorStop(0, 'rgba(154,107,255,0)');
-  haze.addColorStop(1, `rgba(154,107,255,${0.12 * strength})`);
+  haze.addColorStop(1, `rgba(154,107,255,${0.12 * glow + E * 0.06})`);
   ctx.fillStyle = haze;
-  ctx.fillRect(0, hz - H * 0.12, W, H * 0.12);
+  ctx.fillRect(0, hz - H * 0.14, W, H * 0.14);
 
-  // Drifting neon fragments
+  // Outlined pieces floating upward
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  for (const b of BG_BITS) {
+  ctx.lineWidth = 1;
+  const nDebris = lvl === 0 ? 8 : DEBRIS.length;
+  for (let i = 0; i < nDebris; i++) {
+    const b = DEBRIS[i];
     const y = ((b.y - t * 0.012 * (0.3 + b.z)) % 1 + 1) % 1;
-    const x = b.x + Math.sin(t * 0.2 + b.r * 4) * 0.01;
-    const size = 3 + b.z * 10;
+    const x = b.x + Math.sin(t * 0.2 + b.r * 4) * 0.01 - px * 0.06 * (0.3 + b.z);
+    const cs = 3 + b.z * 7;
     ctx.save();
-    ctx.translate(x * W, y * H);
-    ctx.rotate(b.r + t * 0.1 * (b.z - 0.5));
-    ctx.strokeStyle = rgba(b.c, (0.08 + b.z * 0.22) * strength);
-    ctx.lineWidth = 1;
-    ctx.strokeRect(-size / 2, -size / 2, size, size);
+    ctx.translate(x * W, y * H - py * 30 * b.z);
+    ctx.rotate(b.r + t * b.vr);
+    ctx.strokeStyle = rgba(PIECE_COLORS[b.type], (0.07 + b.z * 0.2) * strength);
+    for (const [cx, cy] of SHAPES[b.type].states[0]) ctx.strokeRect((cx - 1.5) * cs, (cy - 1) * cs, cs, cs);
     ctx.restore();
   }
   ctx.restore();
 }
 
-/* ---------- per-game visual effects (particles, trails, rings) ---------- */
+/* ---------- per-game visual effects (particles, trails, rings, titles) ---------- */
+// Each board keeps an "energy" (0-1) that rises with clears, combos, B2B and attacks
+// and decays slowly; it drives the frame light, the floor grid and the aurora.
 function vfx(g) {
-  if (!g._vfx) g._vfx = { parts: [], trails: [], rings: [], bands: [], lockFlash: null, pc: 0, meterPulse: 0 };
+  if (!g._vfx) {
+    g._vfx = {
+      parts: [], trails: [], rings: [], bands: [], impacts: [], vortex: [], after: [],
+      lockFlash: null, pc: 0, meterPulse: 0, energy: 0, title: null, pillar: 0, b2bArc: 0, comboMark: null,
+      garbFlash: 0, wave: 0, spawnT: 1, spawnKey: '', lastPos: null, lastLock: null, lastPhase: null, lastLevel: 1, goFired: false,
+    };
+  }
   return g._vfx;
 }
+function addPart(V, p) {
+  if (V.parts.length < FX_PARTICLE_CAP[fxLevel()]) V.parts.push(p);
+}
+/** n scaled by the effects level, rounded randomly so small counts still show up. */
+function fxCount(n) {
+  const m = n * FX_PARTICLE_MUL[fxLevel()];
+  return Math.floor(m) + (Math.random() < m % 1 ? 1 : 0);
+}
+const COMBO_COLORS = ['#4dff9a', '#38e8ff', '#9a6bff', '#ff4fd8', '#ffd66e'];
+const comboColor = (n) => COMBO_COLORS[Math.min(4, Math.floor((n - 1) / 3))];
+
 function consumeFx(g, L) {
   const V = vfx(g);
   const s = L.s;
   const rowY = (r) => L.by + (r - HIDDEN_ROWS) * s;
+  let cleared = 0, spin = false, pc = false;
   for (const ev of g.fx) {
     switch (ev.type) {
       case 'clear':
-        for (const row of ev.rows) {
+        for (const row of ev.rows || []) {
+          cleared++;
           V.bands.push({ y: rowY(row.y), t: 0 });
           row.cells.forEach((type, c) => {
             if (!type) return;
-            for (let k = 0; k < 2; k++) {
-              V.parts.push({
+            const color = PIECE_COLORS[type] || PIECE_COLORS.G;
+            for (let k = fxCount(3); k > 0; k--) {
+              addPart(V, {
                 x: L.bx + (c + 0.5) * s, y: rowY(row.y) + s / 2,
-                vx: ((c - 4.5) / 4.5) * rand(3, 9) * s + rand(-1.5, 1.5) * s, vy: rand(-6, -1) * s,
-                life: rand(0.45, 0.9), max: 0.9, size: s * rand(0.12, 0.3), color: PIECE_COLORS[type],
+                vx: ((c - 4.5) / 4.5) * rand(3, 10) * s + rand(-1.5, 1.5) * s, vy: rand(-7, -1) * s,
+                life: rand(0.45, 0.9), max: 0.9, size: s * rand(0.12, 0.3), color, streak: k === 1,
               });
             }
           });
         }
         break;
-      case 'hard':
-        V.trails.push({ cells: ev.cells, color: PIECE_COLORS[ev.piece], t: 0 });
+      case 'hard': {
+        const color = PIECE_COLORS[ev.piece] || PIECE_COLORS.G;
+        V.trails.push({ cells: ev.cells, color, t: 0 });
+        let x0 = COLS, x1 = 0, yb = 0;
         for (const c of ev.cells) {
-          for (let k = 0; k < 3; k++) {
-            V.parts.push({ x: L.bx + (c.x + rand(0.1, 0.9)) * s, y: rowY(c.y1) + s, vx: rand(-2, 2) * s, vy: rand(-4, -1) * s,
-              life: rand(0.2, 0.4), max: 0.4, size: s * rand(0.08, 0.16), color: PIECE_COLORS[ev.piece] });
+          x0 = Math.min(x0, c.x); x1 = Math.max(x1, c.x + 1); yb = Math.max(yb, c.y1);
+          for (let k = fxCount(4); k > 0; k--) {
+            addPart(V, { x: L.bx + (c.x + rand(0.1, 0.9)) * s, y: rowY(c.y1) + s, vx: rand(-3, 3) * s, vy: rand(-5, -1) * s,
+              life: rand(0.2, 0.45), max: 0.45, size: s * rand(0.08, 0.16), color });
           }
         }
+        if (fxLevel() > 0) V.impacts.push({ x0, x1, y: yb + 1, color, t: 0 });
         break;
+      }
       case 'lock':
         V.lockFlash = { cells: ev.cells, t: 0 };
-        break;
-      case 'pc':
-        V.pc = 1.9;
-        for (let k = 0; k < 90; k++) {
-          const a = rand(0, Math.PI * 2), sp = rand(3, 14) * s;
-          V.parts.push({ x: L.bx + L.bw / 2, y: L.by + L.bh / 2, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
-            life: rand(0.6, 1.3), max: 1.3, size: s * rand(0.12, 0.3), color: PIECE_COLORS[PIECE_TYPES[k % 7]] });
+        if (ev.cells && ev.cells.length) {
+          V.lastLock = { x: ev.cells.reduce((a, c) => a + c.x, 0) / ev.cells.length, y: ev.cells.reduce((a, c) => a + c.y, 0) / ev.cells.length };
         }
         break;
+      case 'pc':
+        pc = true;
+        V.pc = 1.9;
+        for (let k = fxCount(110); k > 0; k--) {
+          const a = rand(0, Math.PI * 2), sp = rand(3, 15) * s;
+          addPart(V, { x: L.bx + L.bw / 2, y: L.by + L.bh / 2, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+            life: rand(0.6, 1.4), max: 1.4, size: s * rand(0.12, 0.3), color: PIECE_COLORS[PIECE_TYPES[k % 7]], streak: k % 3 === 0 });
+        }
+        V.rings.push({ t: 0, color: '#ffd66e', big: true });
+        screenFlash('#ffd66e', 0.24);
+        break;
       case 'spin':
-        V.rings.push({ t: 0, color: PIECE_COLORS.T, big: false });
+        spin = true;
+        V.rings.push({ t: 0, color: PIECE_COLORS[g.spinPiece] || PIECE_COLORS.T, big: false });
+        if (V.lastLock && fxLevel() > 0) V.vortex.push({ x: V.lastLock.x, y: V.lastLock.y, color: PIECE_COLORS[g.spinPiece] || PIECE_COLORS.T, t: 0 });
         break;
       case 'attack': {
+        V.energy = Math.min(1, V.energy + Math.min(0.3, (ev.lines || 0) * 0.04));
         if (ev.lines >= 4) V.rings.push({ t: 0, color: ev.lines >= 8 ? '#ffd66e' : '#38e8ff', big: true });
         const target = App.games.find(o => o !== g);
         if (target && ev.sent > 0) globalFx.push({ from: g, to: target, t: 0, lines: ev.sent, color: ACCENTS[App.games.indexOf(g)] || '#38e8ff' });
@@ -270,30 +384,124 @@ function consumeFx(g, L) {
       }
       case 'garbage':
         V.meterPulse = 1;
+        V.garbFlash = 1;
         break;
     }
   }
   g.fx.length = 0;
+  if (cleared) onClear(g, V, cleared, spin, pc);
+}
+/** The big reactions to a line clear, scaled by how impressive it was. */
+function onClear(g, V, n, spin, pc) {
+  const combo = Math.max(0, g.combo | 0), b2b = Math.max(0, g.b2b | 0);
+  V.energy = Math.min(1, V.energy + 0.08 * n + (spin ? 0.15 : 0) + combo * 0.03 + (b2b ? 0.08 : 0));
+  screenFx.pulse = Math.min(1.6, screenFx.pulse + 0.2 * n + (spin ? 0.3 : 0) + combo * 0.05);
+  if (combo >= 1) V.comboMark = { n: combo, t: 0 };
+  if (combo >= 5) V.rings.push({ t: 0, color: comboColor(combo), big: false });
+  if (b2b >= 1 && (n === 4 || spin)) V.b2bArc = 0.9;
+  if (pc) return; // the perfect clear has its own title
+  if (n === 4) {
+    V.title = { text: 'QUAD', sub: b2b >= 1 ? `B2B ×${b2b}` : '', color: PIECE_COLORS.I, t: 0, life: 1.1 };
+    V.pillar = 1;
+    V.rings.push({ t: 0, color: '#38e8ff', big: true });
+    screenFlash('#38e8ff', 0.18);
+  } else if (spin && n >= 2) {
+    const p = PIECE_COLORS[g.spinPiece] ? g.spinPiece : 'T';
+    V.title = { text: `${p}-SPIN`, sub: CLEAR_NAMES[n], color: PIECE_COLORS[p], t: 0, life: 1.1 };
+    screenFlash(PIECE_COLORS[p], 0.12);
+  }
+}
+/** Spawns, moves, phase and level changes, noticed by comparing with last frame. */
+function trackState(g, V, L) {
+  const p = g.piece;
+  if (p) {
+    const key = `${g.pieces}|${p.type}`;
+    if (key !== V.spawnKey) { V.spawnKey = key; V.spawnT = 0; V.lastPos = null; }
+    // Afterimages when the piece moves sideways or rotates (Ultra, your own board)
+    if (!g.remote && fxLevel() === 2) {
+      const lp = V.lastPos;
+      if (lp && (lp.x !== p.x || lp.rot !== p.rot) && V.after.length < 6) V.after.push({ type: p.type, rot: lp.rot, x: lp.x, y: lp.y, t: 0 });
+      V.lastPos = { x: p.x, y: p.y, rot: p.rot };
+    }
+  }
+  if (g.phase !== V.lastPhase) {
+    if (g.phase === 'done' && V.lastPhase === 'playing' && fxLevel() > 0) {
+      for (let k = fxCount(140); k > 0; k--) {
+        addPart(V, { x: L.bx + rand(0, L.bw), y: L.by + rand(-2, 1) * L.s, vx: rand(-2, 2) * L.s, vy: rand(-2, 4) * L.s,
+          life: rand(1.4, 2.4), max: 2.4, size: L.s * rand(0.15, 0.32), color: PIECE_COLORS[PIECE_TYPES[k % 7]], grav: 0.18 });
+      }
+      V.rings.push({ t: 0, color: '#4dff9a', big: true });
+    }
+    if (g.phase === 'countdown') V.goFired = false;
+    V.lastPhase = g.phase;
+  }
+  if (g.goTimer > 0 && !V.goFired) { V.goFired = true; V.rings.push({ t: 0, color: '#4dff9a', big: true }); }
+  if (g.level > V.lastLevel) V.wave = 1;
+  V.lastLevel = g.level;
 }
 function updateVfx(g, dt, s) {
   const V = vfx(g);
   for (const p of V.parts) {
     p.x += p.vx * dt; p.y += p.vy * dt;
-    p.vy += 32 * s * dt;
+    p.vy += 32 * s * dt * (p.grav || 1);
     p.vx *= 0.985;
     p.life -= dt;
   }
   V.parts = V.parts.filter(p => p.life > 0);
-  if (V.parts.length > 600) V.parts.splice(0, V.parts.length - 600);
   for (const tr of V.trails) tr.t += dt;
   V.trails = V.trails.filter(tr => tr.t < 0.28);
   for (const r of V.rings) r.t += dt;
   V.rings = V.rings.filter(r => r.t < 0.7);
   for (const b of V.bands) b.t += dt;
   V.bands = V.bands.filter(b => b.t < 0.3);
+  for (const im of V.impacts) im.t += dt;
+  V.impacts = V.impacts.filter(im => im.t < 0.25);
+  for (const v of V.vortex) v.t += dt;
+  V.vortex = V.vortex.filter(v => v.t < 0.7);
+  for (const a of V.after) a.t += dt;
+  V.after = V.after.filter(a => a.t < 0.12);
   if (V.lockFlash) { V.lockFlash.t += dt; if (V.lockFlash.t > 0.15) V.lockFlash = null; }
+  if (V.comboMark && (V.comboMark.t += dt) > 1.4) V.comboMark = null;
+  if (V.title && (V.title.t += dt) > V.title.life) V.title = null;
   V.pc = Math.max(0, V.pc - dt);
   V.meterPulse = Math.max(0, V.meterPulse - dt * 2.5);
+  V.pillar = Math.max(0, V.pillar - dt * 2.6);
+  V.b2bArc = Math.max(0, V.b2bArc - dt);
+  V.garbFlash = Math.max(0, V.garbFlash - dt * 3);
+  V.wave = Math.max(0, V.wave - dt * 1.4);
+  V.spawnT += dt;
+  V.energy = Math.max(0, V.energy - dt * 0.12);
+}
+
+/* Chromatic-split title text: cyan and magenta ghosts either side of a white core. */
+function drawSplitText(text, cx, cy, size, color, maxW, alpha, split) {
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  setFont(900, size, FONT_D, size * 0.08);
+  ctx.globalAlpha = alpha;
+  if (split > 0) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = 'rgba(56,232,255,0.75)';
+    ctx.fillText(text, cx - split, cy, maxW);
+    ctx.fillStyle = 'rgba(255,79,216,0.75)';
+    ctx.fillText(text, cx + split, cy, maxW);
+    ctx.restore();
+  }
+  ctx.shadowColor = color;
+  ctx.shadowBlur = size * 0.6;
+  ctx.fillStyle = color;
+  ctx.fillText(text, cx, cy, maxW);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.fillText(text, cx, cy, maxW);
+  ctx.globalAlpha = 1;
+}
+/** A jagged lightning bolt from (x, y0) to (x, y1), wandering sideways by up to amp. */
+function bolt(x, y0, y1, amp) {
+  const segs = 10;
+  ctx.moveTo(x, y0);
+  for (let i = 1; i <= segs; i++) ctx.lineTo(x + (i < segs ? rand(-amp, amp) : 0), y0 + (y1 - y0) * i / segs);
 }
 
 /* ---------- HUD pieces ---------- */
@@ -378,6 +586,8 @@ function drawPlayer(g, L, header, t, dt) {
   consumeFx(g, L);
   updateVfx(g, dt, s);
   const V = vfx(g);
+  trackState(g, V, L);
+  const lvl = fxLevel();
   const rowY = (r) => by + (r - HIDDEN_ROWS) * s;
 
   ctx.save();
@@ -442,7 +652,74 @@ function drawPlayer(g, L, header, t, dt) {
     dg.addColorStop(1, 'rgba(255,77,106,0)');
     ctx.fillStyle = dg;
     ctx.fillRect(bx, by, bw, bh * 0.5);
+    // Hazard stripes along the top of the well
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(bx, by, bw, s * 0.5);
+    ctx.clip();
+    ctx.fillStyle = `rgba(255,77,106,${0.16 + 0.14 * pulse})`;
+    const off = (t * s * 2) % (s * 1.2);
+    for (let x = bx - s * 1.2 + off; x < bx + bw + s; x += s * 1.2) {
+      ctx.beginPath();
+      ctx.moveTo(x, by + s * 0.5); ctx.lineTo(x + s * 0.5, by); ctx.lineTo(x + s * 1.0, by); ctx.lineTo(x + s * 0.5, by + s * 0.5);
+      ctx.fill();
+    }
+    ctx.restore();
   }
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  if (lvl > 0) {
+    // Glass reflection and a slow scan line sweeping down the well
+    const sheen = ctx.createLinearGradient(bx, by, bx + bw, by + bh * 0.6);
+    sheen.addColorStop(0, 'rgba(255,255,255,0.035)');
+    sheen.addColorStop(0.35, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sheen;
+    ctx.fillRect(bx, by, bw, bh);
+    const sweep = (t % 7) / 1.6;
+    if (sweep < 1) {
+      const sy = by + bh * sweep;
+      const sg = ctx.createLinearGradient(0, sy - s * 1.5, 0, sy);
+      sg.addColorStop(0, rgba(accent, 0));
+      sg.addColorStop(1, rgba(accent, 0.07));
+      ctx.fillStyle = sg;
+      ctx.fillRect(bx, sy - s * 1.5, bw, s * 1.5);
+    }
+  }
+  // Combo counter as a big watermark behind the stack
+  if (V.comboMark && lvl > 0) {
+    const cm = V.comboMark, kk = cm.t / 1.4;
+    const a = (kk < 0.1 ? kk / 0.1 : 1 - (kk - 0.1) / 0.9) * 0.22;
+    const col = comboColor(cm.n);
+    const pop = 1 + 0.25 * (1 - easeOut(cm.t / 0.2));
+    ctx.globalAlpha = a;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    setFont(900, s * 4.2 * pop, FONT_D, 0);
+    ctx.fillStyle = col;
+    ctx.fillText(String(cm.n), bx + bw / 2, by + bh * 0.56);
+    setFont(900, s * 0.9, FONT_D, s * 0.3);
+    ctx.fillText('COMBO', bx + bw / 2, by + bh * 0.56 + s * 2.8);
+    ctx.globalAlpha = 1;
+  }
+  // Blitz level up: a violet wave rising through the well
+  if (V.wave > 0) {
+    const wy = by + bh * V.wave;
+    const wg = ctx.createLinearGradient(0, wy, 0, wy + s * 3);
+    wg.addColorStop(0, `rgba(154,107,255,${0.35 * V.wave})`);
+    wg.addColorStop(1, 'rgba(154,107,255,0)');
+    ctx.fillStyle = wg;
+    ctx.fillRect(bx, wy, bw, s * 3);
+  }
+  // Incoming garbage: red light rising from the floor
+  if (V.garbFlash > 0) {
+    const gg = ctx.createLinearGradient(0, by + bh, 0, by + bh * 0.55);
+    gg.addColorStop(0, `rgba(255,77,106,${0.32 * V.garbFlash})`);
+    gg.addColorStop(1, 'rgba(255,77,106,0)');
+    ctx.fillStyle = gg;
+    ctx.fillRect(bx, by + bh * 0.55, bw, bh * 0.45);
+  }
+  ctx.restore();
 
   // Column guide beam under the active piece
   const p = g.piece;
@@ -487,8 +764,18 @@ function drawPlayer(g, L, header, t, dt) {
       const gy = g.ghostY();
       for (const [cx, cy] of cells) drawGhostBlock(bx + (p.x + cx) * s, rowY(gy + cy), s, p.type);
     }
+    for (const a of V.after) {
+      for (const [cx, cy] of SHAPES[a.type].states[a.rot]) drawBlock(bx + (a.x + cx) * s, rowY(a.y + cy), s, a.type, 0.28 * (1 - a.t / 0.12), 1);
+    }
     const lockFade = g.grounded() ? 1 - 0.4 * Math.min(1, g.lockTimer / LOCK_DELAY) : 1;
     for (const [cx, cy] of cells) drawBlock(bx + (p.x + cx) * s, rowY(p.y + cy), s, p.type, lockFade, 2);
+    // A new piece materialises: a bright outline that shrinks onto it
+    if (V.spawnT < 0.14 && lvl > 0) {
+      const k = V.spawnT / 0.14, grow = s * 0.35 * (1 - k);
+      ctx.strokeStyle = `rgba(255,255,255,${0.85 * (1 - k)})`;
+      ctx.lineWidth = Math.max(1, s * 0.08);
+      for (const [cx, cy] of cells) ctx.strokeRect(bx + (p.x + cx) * s - grow, rowY(p.y + cy) - grow, s + grow * 2, s + grow * 2);
+    }
   }
 
   // Lock flash
@@ -506,9 +793,55 @@ function drawPlayer(g, L, header, t, dt) {
       const hh = s * (1 - k);
       ctx.fillStyle = `rgba(200,245,255,${0.9 * (1 - k)})`;
       ctx.fillRect(bx - s * 0.5 * k, b.y + (s - hh) / 2, bw + s * k, hh);
+      if (lvl > 0) {
+        // The beam vents out past both walls
+        const reach = s * (1.5 + 3 * easeOut(k * 2));
+        const yy = b.y + (s - hh * 0.5) / 2;
+        const lg = ctx.createLinearGradient(bx - reach, 0, bx, 0);
+        lg.addColorStop(0, 'rgba(200,245,255,0)');
+        lg.addColorStop(1, `rgba(200,245,255,${0.7 * (1 - k)})`);
+        ctx.fillStyle = lg;
+        ctx.fillRect(bx - reach, yy, reach, hh * 0.5);
+        const rg = ctx.createLinearGradient(bx + bw, 0, bx + bw + reach, 0);
+        rg.addColorStop(0, `rgba(200,245,255,${0.7 * (1 - k)})`);
+        rg.addColorStop(1, 'rgba(200,245,255,0)');
+        ctx.fillStyle = rg;
+        ctx.fillRect(bx + bw, yy, reach, hh * 0.5);
+      }
     }
     ctx.restore();
   }
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  // Hard drop impact: a shock line spreading along the landing row
+  for (const im of V.impacts) {
+    const k = im.t / 0.25, spread = s * 2.5 * easeOut(k);
+    ctx.fillStyle = rgba(im.color, 0.8 * (1 - k));
+    ctx.fillRect(bx + im.x0 * s - spread, rowY(im.y) - s * 0.06, (im.x1 - im.x0) * s + spread * 2, s * 0.12);
+  }
+  // QUAD: a light pillar fills the well
+  if (V.pillar > 0) {
+    const pg = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+    pg.addColorStop(0, 'rgba(56,232,255,0)');
+    pg.addColorStop(0.5, `rgba(120,240,255,${0.32 * V.pillar})`);
+    pg.addColorStop(1, 'rgba(56,232,255,0)');
+    ctx.fillStyle = pg;
+    ctx.fillRect(bx - s, by - s * 2 * V.pillar, bw + s * 2, bh + s * 2 * V.pillar);
+  }
+  // Spin vortex: arcs whirling around where the piece spun in
+  for (const v of V.vortex) {
+    const k = v.t / 0.7, vx = bx + (v.x + 0.5) * s, vy = rowY(v.y) + s / 2;
+    ctx.strokeStyle = rgba(v.color, 0.85 * (1 - k));
+    ctx.lineWidth = s * 0.14 * (1 - k * 0.6);
+    for (let i = 0; i < 3; i++) {
+      const r = s * (0.8 + i * 0.55 + easeOut(k) * 1.6), a0 = v.t * (9 - i * 2) + i * 2.1;
+      ctx.beginPath();
+      ctx.arc(vx, vy, r, a0, a0 + Math.PI * (0.9 - i * 0.15));
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 
   // Board frame: open top, glowing sides and floor, corner brackets
   ctx.save();
@@ -539,6 +872,40 @@ function drawPlayer(g, L, header, t, dt) {
   ctx.lineTo(bx + bw, by + 0.5);
   ctx.stroke();
   ctx.setLineDash([]);
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  // Two lights race down the walls and meet under the floor; faster with energy
+  if (lvl > 0 && g.phase !== 'over') {
+    const half = bh + bw / 2;
+    const head = ((t * (0.22 + V.energy * 0.6)) % 1) * half;
+    const at = (d) => (d < bh ? [bx - 1, by + d] : [bx - 1 + (d - bh), by + bh + 1]);
+    const tail = lvl === 2 ? 14 : 7;
+    for (let i = 0; i < tail; i++) {
+      const d = head - i * s * 0.35;
+      if (d < 0) break;
+      const [x, y] = at(d);
+      const r = s * (i === 0 ? 0.2 : 0.15) * (1 - i / tail);
+      ctx.fillStyle = i === 0 ? '#ffffff' : rgba(edge, 0.9 * (1 - i / tail));
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      ctx.fillRect(2 * bx + bw - x - r, y - r, r * 2, r * 2);
+    }
+  }
+  // Back-to-back: gold lightning crawling up both walls
+  const b2bIdle = lvl === 2 && g.b2b >= 4 && g.phase === 'playing' ? 0.25 : 0;
+  const arc = Math.max(V.b2bArc / 0.9, b2bIdle);
+  if (arc > 0 && lvl > 0 && Math.random() < 0.6 + arc * 0.4) {
+    ctx.strokeStyle = `rgba(255,214,110,${0.85 * arc})`;
+    ctx.lineWidth = Math.max(1, s * 0.07);
+    ctx.shadowColor = '#ffd66e';
+    ctx.shadowBlur = s * 0.6;
+    const top = by + bh * (1 - Math.min(1, arc * 1.4));
+    ctx.beginPath();
+    bolt(bx - s * 0.3, by + bh, top, s * 0.35);
+    bolt(bx + bw + s * 0.3, by + bh, top, s * 0.35);
+    ctx.stroke();
+  }
+  ctx.restore();
 
   // Mode progress bar (right edge of the board)
   let prog = null;
@@ -597,12 +964,26 @@ function drawPlayer(g, L, header, t, dt) {
     const alpha = kk > 0.7 ? (1 - kk) / 0.3 : 1;
     const inK = easeOut(pp.t / 160);
     const size = s * (pp.big ? 0.62 : 0.52) * (0.85 + 0.15 * inK);
-    ctx.globalAlpha = alpha * inK;
+    const px = popX - (1 - inK) * s * 1.5, py = by + holdH + s * (1.1 + i * 0.95), maxW = (METER_X - 0.4) * s;
+    ctx.save();
+    // Slides in leaning forward, then straightens up
+    ctx.setTransform(ctx.getTransform().translate(px, py).skewX(-20 * (1 - inK)).translate(-px, -py));
     setFont(900, size, FONT_D, size * 0.08);
+    if (lvl > 0 && inK < 1) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = alpha * 0.6 * (1 - inK);
+      ctx.fillStyle = '#38e8ff';
+      ctx.fillText(pp.text, px - s * 0.25, py, maxW);
+      ctx.fillStyle = '#ff4fd8';
+      ctx.fillText(pp.text, px + s * 0.25, py, maxW);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    ctx.globalAlpha = alpha * inK;
     ctx.shadowColor = pp.color;
     ctx.shadowBlur = s * 0.5;
     ctx.fillStyle = pp.color;
-    ctx.fillText(pp.text, popX - (1 - inK) * s * 1.5, by + holdH + s * (1.1 + i * 0.95), (METER_X - 0.4) * s);
+    ctx.fillText(pp.text, px, py, maxW);
+    ctx.restore();
   });
   ctx.shadowBlur = 0;
   ctx.globalAlpha = 1;
@@ -622,8 +1003,18 @@ function drawPlayer(g, L, header, t, dt) {
   ctx.globalCompositeOperation = 'lighter';
   for (const pt of V.parts) {
     ctx.globalAlpha = Math.max(0, pt.life / pt.max);
-    ctx.fillStyle = pt.color;
-    ctx.fillRect(pt.x - pt.size / 2, pt.y - pt.size / 2, pt.size, pt.size);
+    if (pt.streak) {
+      // Streaks stretch along their motion like sparks
+      ctx.strokeStyle = pt.color;
+      ctx.lineWidth = pt.size * 0.45;
+      ctx.beginPath();
+      ctx.moveTo(pt.x, pt.y);
+      ctx.lineTo(pt.x - pt.vx * 0.035, pt.y - pt.vy * 0.035);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = pt.color;
+      ctx.fillRect(pt.x - pt.size / 2, pt.y - pt.size / 2, pt.size, pt.size);
+    }
   }
   ctx.restore();
 
@@ -655,6 +1046,22 @@ function drawPlayer(g, L, header, t, dt) {
     const sc = 0.7 + 0.3 * easeOut(kk * 4);
     drawCenterText('PERFECT', cx, cy - s * 0.8, s * 1.15 * sc, '#ffd66e', bw, a);
     drawCenterText('CLEAR', cx, cy + s * 0.6, s * 1.15 * sc, '#ff4fd8', bw, a);
+  }
+  // QUAD / big spin title: slams in with a chromatic split, holds, then fades
+  if (V.title) {
+    const T = V.title, kk = T.t / T.life;
+    const slam = 1 + 0.9 * (1 - easeOut(T.t / 0.14));
+    const a = kk > 0.7 ? (1 - kk) / 0.3 : Math.min(1, T.t / 0.06);
+    const size = s * 1.9 * slam;
+    const ty = by + bh * 0.3;
+    drawSplitText(T.text, cx, ty, size, T.color, bw * 1.15, a, lvl > 0 ? s * (0.12 + 0.5 * (1 - easeOut(T.t / 0.3))) : 0);
+    if (T.sub) {
+      setFont(800, s * 0.6, FONT_D, s * 0.3);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = T.sub.startsWith('B2B') ? '#ffd66e' : '#e8f1ff';
+      ctx.fillText(T.sub, cx, ty + s * 1.5, bw);
+      ctx.globalAlpha = 1;
+    }
   }
   if (g.phase === 'over' || g.phase === 'done') {
     let text, col;
@@ -696,8 +1103,8 @@ function drawPlayer(g, L, header, t, dt) {
 
 /* ---------- attack projectiles between boards ---------- */
 function drawGlobalFx(dt) {
+  const lvl = fxLevel();
   for (const f of globalFx) f.t += dt;
-  for (let i = globalFx.length - 1; i >= 0; i--) if (globalFx[i].t > 0.5) globalFx.splice(i, 1);
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   for (const f of globalFx) {
@@ -706,21 +1113,73 @@ function drawGlobalFx(dt) {
     const x0 = A.bx + A.bw / 2, y0 = A.by + A.bh * 0.55;
     const x1 = B.x + (METER_X + METER_W / 2) * B.s, y1 = B.by + B.bh - B.s;
     const mxp = (x0 + x1) / 2, myp = Math.min(y0, y1) - A.s * 6;
-    for (let k = 0; k < 8; k++) {
-      const u = Math.max(0, easeOut(f.t / 0.5) - k * 0.025);
-      const x = (1 - u) * (1 - u) * x0 + 2 * (1 - u) * u * mxp + u * u * x1;
-      const y = (1 - u) * (1 - u) * y0 + 2 * (1 - u) * u * myp + u * u * y1;
-      const r = A.s * (0.25 + Math.min(f.lines, 10) * 0.04) * (1 - k * 0.1);
-      ctx.globalAlpha = 1 - k * 0.12;
-      ctx.fillStyle = f.color;
+    const at = (u) => [(1 - u) * (1 - u) * x0 + 2 * (1 - u) * u * mxp + u * u * x1, (1 - u) * (1 - u) * y0 + 2 * (1 - u) * u * myp + u * u * y1];
+    const size = A.s * (0.25 + Math.min(f.lines, 10) * 0.04);
+    if (f.t >= 0.5) {
+      // Impact: a burst of sparks on the receiver's garbage meter
+      if (!f.hit) {
+        f.hit = true;
+        for (let k = fxCount(10 + f.lines * 4); k > 0; k--) {
+          const a = rand(0, Math.PI * 2), sp = rand(2, 9) * B.s;
+          globalParts.push({ x: x1, y: y1, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: rand(0.25, 0.55), max: 0.55, size: B.s * rand(0.1, 0.22), color: f.color, s: B.s });
+        }
+        vfx(f.to).meterPulse = 1;
+      }
+      continue;
+    }
+    const head = easeOut(f.t / 0.5);
+    for (let k = 0; k < 10; k++) {
+      const [x, y] = at(Math.max(0, head - k * 0.022));
+      ctx.globalAlpha = 1 - k * 0.09;
+      ctx.fillStyle = k === 0 ? '#ffffff' : f.color;
       ctx.shadowColor = f.color;
       ctx.shadowBlur = A.s;
       ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.arc(x, y, size * (1 - k * 0.08), 0, Math.PI * 2);
       ctx.fill();
     }
+    // Sparkling tail
+    if (lvl > 0) {
+      const [x, y] = at(head);
+      for (let k = fxCount(3); k > 0; k--) {
+        globalParts.push({ x, y, vx: rand(-1.5, 1.5) * A.s, vy: rand(-1.5, 1.5) * A.s, life: rand(0.2, 0.4), max: 0.4, size: A.s * rand(0.06, 0.14), color: f.color, s: A.s });
+      }
+    }
   }
+  ctx.shadowBlur = 0;
+  for (let i = globalFx.length - 1; i >= 0; i--) if (globalFx[i].hit) globalFx.splice(i, 1);
+  for (const p of globalParts) {
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vy += 10 * p.s * dt;
+    p.life -= dt;
+    ctx.globalAlpha = Math.max(0, p.life / p.max);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+  }
+  globalParts = globalParts.filter(p => p.life > 0);
+  if (globalParts.length > 400) globalParts.splice(0, globalParts.length - 400);
   ctx.restore();
+}
+
+/** Full-screen overlays: the tinted flash on big plays and a red edge glow in danger. */
+function drawScreenFx(dt, games) {
+  const W = VIEW_W, H = VIEW_H;
+  const danger = games.some(g => !g.remote && g.phase === 'playing' && g.stackHeight() > 16);
+  screenFx.danger += ((danger ? 1 : 0) - screenFx.danger) * Math.min(1, dt * 4);
+  if (screenFx.danger > 0.02 && fxLevel() > 0) {
+    const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+    vg.addColorStop(0, 'rgba(255,40,70,0)');
+    vg.addColorStop(1, `rgba(255,40,70,${0.22 * screenFx.danger * (0.75 + 0.25 * Math.sin(performance.now() / 160))})`);
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, W, H);
+  }
+  if (screenFx.flash > 0) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = rgba(screenFx.flashColor, screenFx.flash);
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
 }
 
 /* ---------- frame ---------- */
@@ -745,11 +1204,18 @@ function soloBoardRect() {
 
 let lastRenderTime = performance.now();
 function render(now = performance.now()) {
-  const dt = Math.min(0.05, (now - lastRenderTime) / 1000);
+  const rawMs = now - lastRenderTime;
+  const dt = Math.min(0.05, rawMs / 1000);
   lastRenderTime = now;
   const t = now / 1000;
   const games = App.games;
-  drawBackground(t, games.length > 0);
+  trackFrameRate(rawMs, dt, games.length > 0 && !App.paused && !document.hidden);
+  // Shared reactions decay every frame; the background follows the most energetic board.
+  screenFx.flash = Math.max(0, screenFx.flash - dt * 2);
+  screenFx.pulse = Math.max(0, screenFx.pulse - dt * 1.5);
+  const energy = games.reduce((m, g) => Math.max(m, g._vfx ? g._vfx.energy : 0), 0);
+  screenFx.energy += (energy - screenFx.energy) * Math.min(1, dt * 2);
+  drawBackground(t, games.length > 0, dt);
   if (!games.length) return;
   const n = games.length;
   const { AX, W, oppScale, s, x0, y0 } = fitBoards(n);
@@ -778,5 +1244,6 @@ function render(now = performance.now()) {
     ctx.fillText(`ROUND ${App.round}`, cx, cy + s * 1.4);
   }
   drawGlobalFx(dt);
+  drawScreenFx(dt, games);
 }
 resizeCanvas();

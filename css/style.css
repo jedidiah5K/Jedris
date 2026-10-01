@@ -460,3 +460,120 @@ body.touch .touch-only { display: block; }
   .pe-acts { grid-template-columns: repeat(8, 1fr); }
   #pad.free { padding: 0; }
 }
+
+/* =========================================================================
+ * v2.0 HYPERDRIVE design layer: holographic glass, live light and motion.
+ * Everything here animates only transform, opacity and background position.
+ * ========================================================================= */
+/* Logo: gradient core with a light sweep, cyan/magenta ghosts and a rare glitch slice */
+.logo { position: relative; isolation: isolate; background: none; color: #fff; filter: none;
+  -webkit-background-clip: border-box; background-clip: border-box; animation: logoIn .9s cubic-bezier(.2,.8,.2,1) both; }
+.logo-txt { display: inline-block;
+  background: linear-gradient(110deg, transparent 42%, rgba(255,255,255,0.95) 50%, transparent 58%) no-repeat,
+    linear-gradient(100deg, #bff6ff 0%, var(--cyan) 35%, var(--violet) 70%, var(--magenta) 100%);
+  background-size: 300% 100%, 100% 100%; background-position: 100% 0, 0 0;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 18px rgba(56,232,255,0.4)); animation: logoSweep 6s ease-in-out 1s infinite; }
+.logo::before, .logo::after { content: attr(data-text); position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  color: var(--cyan); opacity: .4; mix-blend-mode: screen; transform: translateX(-3px); }
+.logo::after { color: var(--magenta); transform: translateX(3px); animation: glitchA 7s steps(1) infinite; }
+.logo::before { animation: glitchB 7s steps(1) infinite; }
+@keyframes logoIn { from { opacity: 0; letter-spacing: .5em; transform: scale(1.06); } }
+@keyframes logoSweep { 0%, 55% { background-position: 100% 0, 0 0; } 100% { background-position: 0% 0, 0 0; } }
+@keyframes glitchA {
+  0%, 90%, 100% { clip-path: none; transform: translateX(3px); }
+  91% { clip-path: inset(18% 0 58% 0); transform: translateX(12px); }
+  93% { clip-path: inset(62% 0 8% 0); transform: translateX(-9px); }
+  95% { clip-path: inset(38% 0 42% 0); transform: translateX(7px); }
+}
+@keyframes glitchB {
+  0%, 90%, 100% { clip-path: none; transform: translateX(-3px); }
+  92% { clip-path: inset(48% 0 30% 0); transform: translateX(-12px); }
+  94% { clip-path: inset(10% 0 72% 0); transform: translateX(8px); }
+}
+/* Tagline types itself out, with a blinking caret */
+.tagline .type { display: inline-block; animation: typeIn 1s steps(11) .5s both; }
+.tagline::after { content: ""; display: inline-block; width: .55em; height: 2px; margin-left: .2em; vertical-align: middle;
+  background: var(--cyan); box-shadow: 0 0 8px var(--cyan); animation: blink 1s step-end infinite; }
+@keyframes typeIn { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+
+/* Topbar: a light runs along its bottom edge */
+.topbar { position: relative; backdrop-filter: blur(6px); }
+.topbar::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--cyan), var(--magenta), transparent) no-repeat;
+  background-size: 40% 100%; animation: runX 7s linear infinite; }
+@keyframes runX { from { background-position: -70% 0; } to { background-position: 170% 0; } }
+
+/* Menu: a soft glow follows the pointer */
+#menu::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(700px circle at var(--mx, 50%) var(--my, 35%), rgba(56,232,255,0.07), transparent 60%); }
+
+/* Cards: numbered, staggered entrance, holographic sheen and a pointer spotlight */
+.menu-view { counter-reset: tile; }
+.tile .t-name::before { counter-increment: tile; content: counter(tile, decimal-leading-zero); display: inline-block;
+  font-size: .42em; letter-spacing: .12em; color: var(--c); margin-right: .75em; vertical-align: .5em;
+  text-shadow: 0 0 10px var(--c); opacity: .9; }
+.tile::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(260px circle at var(--px, -300px) var(--py, 50%), color-mix(in srgb, var(--c) 26%, transparent), transparent 70%),
+    linear-gradient(105deg, transparent 32%, rgba(255,255,255,0.16) 46%, transparent 60%) no-repeat;
+  background-size: 100% 100%, 250% 100%; background-position: 0 0, 150% 0; transition: background-position .7s cubic-bezier(.2,.8,.2,1); }
+.tile:hover::after, .tile:focus-visible::after { background-position: 0 0, -150% 0; }
+.tile:hover .t-name, .tile:focus-visible .t-name { text-shadow: 0 0 22px var(--c), 0 0 2px #fff; }
+.tile .t-rec:empty::after { content: "›"; display: inline-block; font-size: 34px; line-height: 1; color: var(--c);
+  opacity: .35; transform: translateX(-8px); transition: transform .2s, opacity .2s; }
+.tile:hover .t-rec:empty::after, .tile:focus-visible .t-rec:empty::after { opacity: 1; transform: none; text-shadow: 0 0 12px var(--c); }
+.menu-view > .tile, #cpu-levels > .tile { animation: tileIn .5s cubic-bezier(.2,.8,.2,1) backwards; }
+.menu-view > .tile:nth-of-type(2), #cpu-levels > .tile:nth-child(2) { animation-delay: .06s; }
+.menu-view > .tile:nth-of-type(3), #cpu-levels > .tile:nth-child(3) { animation-delay: .12s; }
+.menu-view > .tile:nth-of-type(4), #cpu-levels > .tile:nth-child(4) { animation-delay: .18s; }
+#cpu-levels > .tile:nth-child(5) { animation-delay: .24s; }
+@keyframes tileIn { from { opacity: 0; transform: translateX(-28px); } }
+.view-title { background: linear-gradient(90deg, #fff, #bfefff 55%, var(--violet)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.view-title .back-btn { color: var(--text); }
+
+/* Panels: deeper glass, a flowing gradient edge and a quick boot-up entrance */
+.panel { background: linear-gradient(160deg, rgba(16,26,50,0.86), rgba(6,10,22,0.84) 60%);
+  box-shadow: inset 0 0 60px rgba(56,232,255,0.07), inset 0 1px 0 rgba(255,255,255,0.06);
+  animation: panelIn .32s cubic-bezier(.2,.8,.2,1) both; }
+.panel::after { content: ""; position: absolute; inset: 0; pointer-events: none; padding: 1px;
+  background: linear-gradient(120deg, var(--cyan), transparent 28%, transparent 68%, var(--magenta)) 0 0 / 200% 200%;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: .75; animation: edgeFlow 6s ease-in-out infinite alternate; }
+.panel::before { width: 160px; box-shadow: 0 0 12px var(--cyan); }
+@keyframes edgeFlow { to { background-position: 100% 100%; } }
+@keyframes panelIn { from { opacity: 0; transform: scale(.965) translateY(10px); } }
+.panel-title { background: linear-gradient(90deg, #fff, #c9f4ff 60%, var(--violet)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.screen.dim { background: radial-gradient(ellipse at 50% 30%, rgba(20,30,70,0.55), rgba(2,4,10,0.82) 70%); }
+
+/* Buttons: a light sweeps across on hover */
+.panel button:not(.linkish), .app-banner { position: relative; overflow: hidden; }
+.panel button:not(.linkish)::after, .app-banner::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.2) 50%, transparent 65%) no-repeat;
+  background-size: 250% 100%; background-position: 150% 0; transition: background-position .6s cubic-bezier(.2,.8,.2,1); }
+.panel button:not(.linkish):hover::after, .app-banner:hover::after { background-position: -150% 0; }
+button.primary { text-shadow: 0 0 12px rgba(120,220,255,0.6); }
+.setting .ctrl.seg { gap: 6px; }
+.setting .ctrl.seg .chip { min-width: 84px; text-transform: none; letter-spacing: .06em; font-size: 14px; }
+.setting .ctrl.seg .chip.on { border-color: var(--cyan); color: var(--cyan); background: rgba(56,232,255,0.14); box-shadow: inset 0 0 14px rgba(56,232,255,0.25); }
+
+/* Round banner: gradient rails and a slam entrance */
+.banner { border-image: linear-gradient(90deg, transparent, var(--cyan), var(--magenta), transparent) 1;
+  background: linear-gradient(90deg, rgba(56,232,255,0.1), rgba(4,8,18,0.92) 25%, rgba(4,8,18,0.92) 75%, rgba(255,79,216,0.1));
+  animation: bannerSlam .45s cubic-bezier(.2,.8,.2,1); }
+@keyframes bannerSlam {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(1.6); filter: blur(6px); }
+  60% { opacity: 1; transform: translate(-50%, -50%) scale(.97); filter: none; }
+  100% { transform: translate(-50%, -50%); }
+}
+
+/* Touch pad: neon edges */
+.pbtn { box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), inset 0 0 14px rgba(56,232,255,0.06), 0 3px 0 rgba(0,0,0,0.45); }
+#pad::before { width: 100%; background: linear-gradient(90deg, transparent, var(--cyan), var(--magenta), transparent); opacity: .7; }
+
+@media (max-width: 640px) {
+  .tile .t-name::before { margin-right: .5em; }
+  .logo::before, .logo::after { opacity: .3; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo::before, .logo::after { animation: none; }
+}

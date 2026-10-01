@@ -24,13 +24,14 @@ const ACTIONS = ['left', 'right', 'soft', 'hard', 'ccw', 'cw', 'r180', 'hold'];
 const ACTION_LABELS = { left: 'Move left', right: 'Move right', soft: 'Soft drop', hard: 'Hard drop',
   ccw: 'Rotate CCW', cw: 'Rotate CW', r180: 'Rotate 180°', hold: 'Hold' };
 
-const VERSION = '1.8.0';
+const VERSION = '2.0.0';
 const REPO_URL = 'https://github.com/jedidiah5K/Jedris';
 const PREFERS_REDUCED_MOTION = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const DEFAULT_SETTINGS = {
   das: 167, arr: 33, sdf: 20, sdfInstant: false, dasCut: false,
   ghost: true, shake: !PREFERS_REDUCED_MOTION, flash: true, sound: true, volume: 0.5,
+  fx: PREFERS_REDUCED_MOTION ? 'minimal' : 'ultra', // effects quality: ultra | standard | minimal
   keys: {
     p1: { left: 'KeyA', right: 'KeyD', soft: 'KeyS', hard: 'KeyW', ccw: 'KeyQ', cw: 'KeyE', r180: 'KeyR', hold: 'ShiftLeft' },
     p2: { left: 'ArrowLeft', right: 'ArrowRight', soft: 'ArrowDown', hard: 'ArrowUp', ccw: 'Comma', cw: 'Period', r180: 'Slash', hold: 'ShiftRight' },
@@ -40,6 +41,7 @@ const DEFAULT_SETTINGS = {
   // Each is { <button id>: { a: action, x, y: centre as a fraction of the screen, w, h: size in pad units } }.
   touch: { portrait: null, landscape: null },
 };
+const FX_QUALITIES = ['ultra', 'standard', 'minimal'];
 const PAD_BUTTONS = ['left', 'right', 'soft', 'hard', 'hold', 'r180', 'ccw', 'cw'];
 
 const STORAGE_KEY = 'jedris.settings.v1';
@@ -60,6 +62,7 @@ function mergeSettings(saved) {
     || (!(saved.v >= 3) && saved.das === 120 && saved.arr === 120);
   if (oldDefault) { delete saved.das; delete saved.arr; }
   for (const k of Object.keys(s)) if (k !== 'keys' && k !== 'touch' && k in saved && typeof saved[k] === typeof s[k]) s[k] = saved[k];
+  if (!FX_QUALITIES.includes(s.fx)) s.fx = DEFAULT_SETTINGS.fx;
   if (saved.keys && typeof saved.keys === 'object') {
     for (const p of ['p1', 'p2']) {
       const keys = saved.keys[p];
